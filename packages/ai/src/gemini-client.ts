@@ -13,7 +13,7 @@ export class AIClient {
     this.mode = config.mode || (process.env.AI_MODE as AIMode) || 'live';
     this.apiKey = config.apiKey || process.env.AI_API_KEY || '';
     this.provider = process.env.AI_PROVIDER || (this.apiKey.startsWith('gsk_') ? 'groq' : 'gemini');
-    this.model = config.model || process.env.AI_MODEL || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash');
+    this.model = config.model || process.env.AI_MODEL || (this.provider === 'groq' ? 'openai/gpt-oss-120b' : 'gemini-2.0-flash');
     this.maxCallsPerDay = config.maxCallsPerDay || 1000;
   }
 
