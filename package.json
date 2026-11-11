@@ -1,0 +1,36 @@
+{
+  "name": "quorum",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A union for AI shopping agents — PayPal AI Hackathon 2026",
+  "keywords": [
+    "paypal",
+    "ai-agents",
+    "agentic-commerce",
+    "cloudflare-workers",
+    "mcp"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "dev:api": "pnpm --filter @quorum/api dev",
+    "dev:web": "pnpm --filter @quorum/web dev",
+    "dev": "pnpm run --parallel dev:api dev:web",
+    "build": "pnpm run -r build",
+    "build:web": "pnpm --filter @quorum/web build",
+    "build:api": "pnpm --filter @quorum/api build",
+    "test": "pnpm run -r test",
+    "test:unit": "pnpm --filter @quorum/engine test && pnpm --filter @quorum/guard test && pnpm --filter @quorum/shared test",
+    "lint": "pnpm run -r lint",
+    "typecheck": "pnpm run -r typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "smoke:paypal": "node scripts/paypal-smoke-test.mjs",
+    "seed": "node scripts/seed.mjs",
+    "demo": "node scripts/demo-scenario.mjs"
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.10",
+    "tsx": "^4.23.15"
+  }
+}

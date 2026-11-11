@@ -1,0 +1,28 @@
+{
+  "name": "@quorum/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared types, schemas, enums, and utilities for the Quorum monorepo",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/*.js": "./src/*.ts",
+    "./src/*": "./src/*",
+    "./*.js": "./src/*.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}

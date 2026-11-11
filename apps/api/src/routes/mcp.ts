@@ -1,0 +1,180 @@
+import { Hono } from 'hono';
+import type { AppStore } from '../store.js';
+import { interpretWish } from '@quorum/ai/src/roles/wish-interpreter.js';
+import { MemberState } from '@quorum/shared/src/enums.js';
+import type { Membership } from '@quorum/shared/src/types.js';
+
+export function createMCPRouter(store: AppStore) {
+  const router = new Hono();
+
+  // MCP JSON-RPC protocol endpoint
+  router.post('/mcp', async (c) => {
+    try {
+      const body = await c.req.json() as {
+        jsonrpc: string;
+        id: string | number;
+        method: string;
+        params?: Record<string, unknown>;
+      };
+
+      if (body.method === 'tools/list') {
+        return c.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            tools: [
+              {
+                name: 'search_coalitions',
+                description: 'Search open Quorum buyer coalitions by category or keyword to pool volume discounts.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    category: { type: 'string', description: 'Product category (e.g. "monitors", "solar")' },
+                  },
+                },
+              },
+              {
+                name: 'create_wish',
+                description: 'Convert plain language shopping request into a structured spec envelope with buyer price ceiling.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    wishText: { type: 'string', description: 'What you want to buy' },
+                    maxPriceCents: { type: 'number', description: 'Hard price ceiling in integer cents' },
+                  },
+                  required: ['wishText', 'maxPriceCents'],
+                },
+              },
+              {
+                name: 'join_coalition',
+                description: 'Join an existing buyer coalition. Requires an agent identifier and price limit.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    coalitionId: { type: 'string' },
+                    agentId: { type: 'string' },
+                    maxPriceCents: { type: 'number' },
+                  },
+                  required: ['coalitionId', 'agentId'],
+                },
+              },
+              {
+                name: 'get_human_approval_link',
+                description: 'CRITICAL SAFETY: Agents cannot approve payments directly. Call this to generate a secure human authorization link for your user to approve in PayPal Sandbox.',
+                inputSchema: {
+                  type: 'object',
+                  properties: {
+                    coalitionId: { type: 'string' },
+                    agentId: { type: 'string' },
+                    amountCents: { type: 'number' },
+                  },
+                  required: ['coalitionId', 'agentId', 'amountCents'],
+                },
+              },
+            ],
+          },
+        });
+      }
+
+      if (body.method === 'tools/call') {
+        const params = body.params as { name: string; arguments?: Record<string, unknown> };
+
+        if (params.name === 'search_coalitions') {
+          const list = Array.from(store.coalitions.values()).map((coalition) => {
+            const product = store.products.get(coalition.productId);
+            const members = store.memberships.get(coalition.id) || [];
+            return {
+              coalitionId: coalition.id,
+              productName: product?.name,
+              category: coalition.specEnvelope.category,
+              currentMemberCount: members.length,
+              quorumTarget: coalition.quorum,
+              priceCeilingCents: coalition.specEnvelope.priceCeilingCents,
+              state: coalition.state,
+            };
+          });
+
+          return c.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            result: { content: [{ type: 'text', text: JSON.stringify(list, null, 2) }] },
+          });
+        }
+
+        if (params.name === 'create_wish') {
+          const args = params.arguments as { wishText: string; maxPriceCents: number };
+          const res = await interpretWish(store.aiClient, args.wishText, args.maxPriceCents);
+          return c.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            result: { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] },
+          });
+        }
+
+        if (params.name === 'join_coalition') {
+          const args = params.arguments as { coalitionId: string; agentId: string; maxPriceCents?: number };
+          const members = store.memberships.get(args.coalitionId) || [];
+
+          const newMember: Membership = {
+            coalitionId: args.coalitionId,
+            userId: args.agentId,
+            isSimulated: false,
+            state: MemberState.INTERESTED,
+            approvedMaxCents: args.maxPriceCents,
+            timestamps: { joinedAt: new Date().toISOString() },
+          };
+          members.push(newMember);
+          store.memberships.set(args.coalitionId, members);
+
+          return c.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            result: {
+              content: [{
+                type: 'text',
+                text: `Agent ${args.agentId} successfully joined coalition ${args.coalitionId}. Call get_human_approval_link to have your human reserve funds with PayPal.`,
+              }],
+            },
+          });
+        }
+
+        if (params.name === 'get_human_approval_link') {
+          const args = params.arguments as { coalitionId: string; agentId: string; amountCents: number };
+          const orderRes = await store.simulatedProvider.createOrder(
+            args.amountCents,
+            `MCP Outside Agent Approval for ${args.agentId}`,
+            `mcp_${args.coalitionId}_${args.agentId}_${Date.now()}`,
+          );
+
+          return c.json({
+            jsonrpc: '2.0',
+            id: body.id,
+            result: {
+              content: [{
+                type: 'text',
+                text: `Human approval URL: ${orderRes.approvalUrl}\nInstruct your human user to open this link to authorize the reservation in PayPal. Funds will NOT be captured until coalition achieves quorum.`,
+              }],
+            },
+          });
+        }
+
+        return c.json({
+          jsonrpc: '2.0',
+          id: body.id,
+          error: { code: -32601, message: `Unknown tool: ${params.name}` },
+        });
+      }
+
+      return c.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        error: { code: -32600, message: 'Invalid Request' },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return c.json({ error: message }, 500);
+    }
+  });
+
+  return router;
+}

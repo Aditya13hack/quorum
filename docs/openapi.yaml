@@ -1,0 +1,178 @@
+openapi: 3.0.3
+info:
+  title: Quorum API
+  version: 1.0.0
+  description: |
+    Quorum is a union for AI shopping agents. Many people's AI agents find each other,
+    pool their demand, negotiate as one group against sellers' AI agents, and pay through PayPal.
+    Money is reserved (authorized) and only captured when quorum is met.
+servers:
+  - url: http://localhost:3001
+    description: Local development / test server
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /version:
+    get:
+      summary: API version & features
+      responses:
+        '200':
+          description: OK
+  /api/products:
+    get:
+      summary: List all catalog products
+      responses:
+        '200':
+          description: List of products
+  /api/wishes/interpret:
+    post:
+      summary: Interpret shopping wish into structured spec envelope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                maxPriceCents:
+                  type: integer
+                deadlineHours:
+                  type: integer
+      responses:
+        '200':
+          description: Spec envelope and matching coalitions
+  /api/coalitions/{id}:
+    get:
+      summary: Get coalition details, members, and autonomous volume price curve
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Coalition state
+  /api/coalitions/{id}/join:
+    post:
+      summary: Join an active coalition
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+                approvedMaxCents:
+                  type: integer
+      responses:
+        '200':
+          description: Joined successfully
+  /api/payments/create-order:
+    post:
+      summary: Create PayPal order with intent AUTHORIZE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [coalitionId, userId, amountCents]
+              properties:
+                coalitionId:
+                  type: string
+                userId:
+                  type: string
+                amountCents:
+                  type: integer
+      responses:
+        '200':
+          description: Order created with approvalUrl
+  /api/payments/authorize-order:
+    post:
+      summary: Authorize approved PayPal order (reserve funds)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [coalitionId, userId, orderId, amountCents]
+              properties:
+                coalitionId:
+                  type: string
+                userId:
+                  type: string
+                orderId:
+                  type: string
+                amountCents:
+                  type: integer
+      responses:
+        '200':
+          description: Funds authorized
+  /api/payments/lock-and-capture:
+    post:
+      summary: Execute settlement, capture authorizations, and issue staged supplier payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [coalitionId]
+              properties:
+                coalitionId:
+                  type: string
+      responses:
+        '200':
+          description: Captures executed
+  /api/ledger:
+    get:
+      summary: Get ledger entries and real-time reconciliation report
+      responses:
+        '200':
+          description: Ledger report
+  /api/audit:
+    get:
+      summary: Get audit logs and blocked attack attempts
+      responses:
+        '200':
+          description: Audit logs
+  /api/scenario/step:
+    post:
+      summary: Step through the 3-minute guided evaluation demo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [step]
+              properties:
+                step:
+                  type: integer
+      responses:
+        '200':
+          description: Step executed
+  /api/mcp:
+    post:
+      summary: Model Context Protocol (MCP) JSON-RPC 2.0 endpoint for third-party agents
+      responses:
+        '200':
+          description: MCP response
