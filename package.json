@@ -18,7 +18,7 @@
     "build": "pnpm run -r build",
     "build:web": "pnpm --filter @quorum/web build",
     "build:api": "pnpm --filter @quorum/api build",
-    "test": "pnpm run -r test",
+    "test": "pnpm run -r --workspace-concurrency=1 test",
     "test:unit": "pnpm --filter @quorum/engine test && pnpm --filter @quorum/guard test && pnpm --filter @quorum/shared test",
     "lint": "pnpm run -r lint",
     "typecheck": "pnpm run -r typecheck",

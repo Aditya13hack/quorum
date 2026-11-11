@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Membership } from '@quorum/shared/src/types.js';
+import { Users, ShieldCheck, Check } from 'lucide-react';
 
 interface RosterTableProps {
   members: Membership[];
@@ -7,68 +8,82 @@ interface RosterTableProps {
 
 export const RosterTable: React.FC<RosterTableProps> = ({ members }) => {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-      <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
-          <h4 className="font-bold text-white text-base">Coalition Member Roster</h4>
-          <p className="text-xs text-slate-400">All participating AI buyer agents and human holders</p>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-slate-500" />
+            <h4 className="font-bold text-slate-900 text-sm">Coalition Member Roster</h4>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Pooled demand from verified human shoppers and autonomous buyer agents
+          </p>
         </div>
-        <div className="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium">
+        <div className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-semibold border border-slate-200/80">
           {members.length} Total Members
         </div>
       </div>
 
       <div className="overflow-x-auto max-h-80 overflow-y-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-950/60 text-slate-400 uppercase font-semibold tracking-wider sticky top-0">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead className="bg-slate-50/80 text-slate-500 font-semibold uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-100 z-10">
             <tr>
-              <th className="px-5 py-3">Agent / User</th>
-              <th className="px-5 py-3">Type</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Max Approved</th>
-              <th className="px-5 py-3">Authorization ID</th>
+              <th className="px-6 py-3">Agent / User</th>
+              <th className="px-6 py-3">Source Type</th>
+              <th className="px-6 py-3">State</th>
+              <th className="px-6 py-3 text-right">Max Approved</th>
+              <th className="px-6 py-3">Authorization ID</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60">
+          <tbody className="divide-y divide-slate-100">
             {members.map((m) => {
               const isSim = m.isSimulated;
               const authId = m.authorizationId || m.simAuthId || 'Pending Approval';
               return (
-                <tr key={m.userId} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-3 font-medium text-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                    {m.userId}
+                <tr key={m.userId} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-6 py-3.5 font-medium text-slate-900">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 uppercase">
+                        {m.userId.substring(0, 2)}
+                      </div>
+                      <span className="font-medium text-slate-800">{m.userId}</span>
+                    </div>
                   </td>
-                  <td className="px-5 py-3">
+
+                  <td className="px-6 py-3.5">
                     {isSim ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
                         SIMULATED
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 w-fit">
+                        <Check className="w-3 h-3" />
                         REAL PAYPAL
                       </span>
                     )}
                   </td>
-                  <td className="px-5 py-3">
+
+                  <td className="px-6 py-3.5">
                     <span
-                      className={`px-2 py-0.5 rounded-md font-semibold ${
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                         m.state === 'APPROVED'
-                          ? 'bg-blue-500/10 text-blue-400'
+                          ? 'bg-blue-50 text-[#003087] border border-blue-200'
                           : m.state === 'CAPTURED'
-                          ? 'bg-emerald-500/10 text-emerald-400'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           : m.state === 'WAITLISTED'
-                          ? 'bg-purple-500/10 text-purple-400'
-                          : 'bg-slate-800 text-slate-400'
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                          : 'bg-slate-100 text-slate-600'
                       }`}
                     >
                       {m.state}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-slate-300 mono font-semibold">
+
+                  <td className="px-6 py-3.5 text-right font-medium text-slate-800 mono">
                     ${((m.approvedMaxCents || 0) / 100).toFixed(2)}
                   </td>
-                  <td className="px-5 py-3 text-slate-400 mono text-[11px] truncate max-w-[160px]">
+
+                  <td className="px-6 py-3.5 text-slate-500 mono text-[11px] truncate max-w-[170px]">
                     {authId}
                   </td>
                 </tr>

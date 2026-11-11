@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, Sparkles, Activity, FileSpreadsheet, Lock, Terminal } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2 } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
@@ -8,34 +8,35 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setTab }) => {
   const tabs = [
-    { id: 'room', label: 'Coalition Room', icon: Activity },
-    { id: 'wish', label: 'Make a Wish', icon: Sparkles },
-    { id: 'ledger', label: 'Ledger & Reconcile', icon: FileSpreadsheet },
-    { id: 'audit', label: 'Guard & Attacks', icon: ShieldCheck },
-    { id: 'demo', label: 'Judge Guided Demo', icon: Lock },
-    { id: 'mcp', label: 'MCP & APIs', icon: Terminal },
+    { id: 'room', label: 'Coalition Overview', icon: Activity },
+    { id: 'wish', label: 'Create Demand', icon: ShoppingCart },
+    { id: 'ledger', label: 'Financial Ledger', icon: FileSpreadsheet },
+    { id: 'audit', label: 'Security & Guard', icon: ShieldCheck },
+    { id: 'demo', label: 'Evaluation Walkthrough', icon: PlayCircle },
+    { id: 'mcp', label: 'API & MCP Server', icon: Code2 },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        {/* Brand */}
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setTab('room')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center font-extrabold text-white text-xl shadow-lg shadow-blue-500/20">
+          <div className="w-9 h-9 rounded-lg bg-[#003087] flex items-center justify-center font-bold text-white text-lg tracking-tight shadow-sm">
             Q
           </div>
-          <div>
+          <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight text-white">Quorum</span>
-              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <span className="font-bold text-base tracking-tight text-slate-900">Quorum</span>
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                 Agentic Commerce
               </span>
             </div>
-            <p className="text-xs text-slate-400">Union for AI Shopping Agents</p>
+            <span className="text-[11px] text-slate-500 font-normal">Autonomous buyer coalition protocol</span>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-1 bg-slate-100/70 p-1 rounded-xl border border-slate-200/80">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = currentTab === tab.id;
@@ -43,13 +44,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setTab }) => {
               <button
                 key={tab.id}
                 onClick={() => setTab(tab.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   active
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-3.5 h-3.5 ${active ? 'text-[#0079C1]' : 'text-slate-400'}`} />
                 {tab.label}
               </button>
             );
@@ -57,10 +58,28 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setTab }) => {
         </nav>
 
         {/* Sandbox Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-semibold text-emerald-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          PayPal Sandbox Only
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-xs font-medium text-emerald-800">
+          <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+          <span>PayPal Sandbox</span>
         </div>
+      </div>
+
+      {/* Mobile nav */}
+      <div className="lg:hidden flex items-center gap-1 overflow-x-auto px-4 py-2 border-t border-slate-100 bg-slate-50">
+        {tabs.map((tab) => {
+          const active = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap ${
+                active ? 'bg-white text-slate-900 border border-slate-200 shadow-xs' : 'text-slate-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
     </header>
   );

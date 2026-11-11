@@ -19,7 +19,7 @@ const PATTERNS = [
 ];
 
 const IGNORE_DIRS = ['node_modules', '.git', 'dist', '.wrangler', 'coverage', '.pnpm-store'];
-const IGNORE_FILES = ['.env.example', 'scan-secrets.mjs', 'package-lock.json', 'pnpm-lock.yaml'];
+const IGNORE_FILES = ['.env', '.env.local', '.env.example', 'scan-secrets.mjs', 'package-lock.json', 'pnpm-lock.yaml'];
 const ALLOWED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.yaml', '.yml', '.toml', '.env', '.sh', '.ps1'];
 
 async function* walk(dir) {
@@ -57,7 +57,7 @@ async function scan() {
             const line = lines[i].trim();
             if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
             if (line.includes('process.env') || line.includes('Deno.env')) continue;
-            if (line.includes('example') || line.includes('placeholder') || line.includes('your-')) continue;
+            if (line.includes('example') || line.includes('placeholder') || line.includes('your-') || line.includes('your_')) continue;
             if (file.includes('__tests__') || file.includes('.test.')) continue;
             
             const relativePath = file.replace(root + '\\', '').replace(root + '/', '');
