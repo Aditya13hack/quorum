@@ -14,7 +14,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @quorum/api dev",
     "dev:web": "pnpm --filter @quorum/web dev",
-    "dev": "pnpm run --parallel dev:api dev:web",
+    "dev": "pnpm --filter @quorum/api --filter @quorum/web --parallel dev",
     "build": "pnpm run -r build",
     "build:web": "pnpm --filter @quorum/web build",
     "build:api": "pnpm --filter @quorum/api build",
