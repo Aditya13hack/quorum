@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, AlertOctagon, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertOctagon, ShieldAlert, Swords, CheckCircle2 } from 'lucide-react';
 
 interface AuditScreenProps {
   dataMode?: 'simulated' | 'live';
@@ -8,6 +8,8 @@ interface AuditScreenProps {
 export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated' }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [triggeringAttack, setTriggeringAttack] = useState(false);
+  const [attackFeedback, setAttackFeedback] = useState<string | null>(null);
 
   const fetchAudit = async () => {
     try {
@@ -27,6 +29,27 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
   useEffect(() => {
     fetchAudit();
   }, [dataMode]);
+
+  const handleTriggerAttack = async (attackType: string) => {
+    setTriggeringAttack(true);
+    setAttackFeedback(null);
+    try {
+      const res = await fetch(`/api/audit/test-attack?mode=${dataMode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attackType }),
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+
+      setAttackFeedback(`Intercepted by Guard: ${result.summary}`);
+      await fetchAudit();
+    } catch (err: any) {
+      alert('Attack simulation failed: ' + err.message);
+    } finally {
+      setTriggeringAttack(false);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -62,6 +85,96 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
         </p>
       </div>
 
+      {/* Interactive Adversarial Threat Simulator */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Swords className="w-4 h-4 text-rose-600" />
+              <h3 className="font-semibold text-slate-900 text-sm">
+                Interactive Adversarial Threat Simulator
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Click any vector below to simulate a rogue seller AI agent attempting an exploit. Watch the pure-code Guard intercept it live.
+            </p>
+          </div>
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 self-start sm:self-auto">
+            Zero Network • Pure Code
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+          <button
+            onClick={() => handleTriggerAttack('G1_PRICE_CEILING')}
+            disabled={triggeringAttack}
+            className="p-3 text-left rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50 text-slate-900 text-xs font-medium space-y-1 transition-all duration-150 disabled:opacity-50"
+          >
+            <div className="flex items-center justify-between text-rose-700 font-semibold text-[11px]">
+              <span>Rule G1: Price Ceiling</span>
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
+            <p className="text-[11px] text-slate-600 font-normal leading-relaxed">
+              Seller AI proposes $450/unit offer exceeding the user's hard $380 ceiling.
+            </p>
+          </button>
+
+          <button
+            onClick={() => handleTriggerAttack('G8_SELLER_AS_BUYER')}
+            disabled={triggeringAttack}
+            className="p-3 text-left rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50 text-slate-900 text-xs font-medium space-y-1 transition-all duration-150 disabled:opacity-50"
+          >
+            <div className="flex items-center justify-between text-rose-700 font-semibold text-[11px]">
+              <span>Rule G8: Sybil Collusion</span>
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
+            <p className="text-[11px] text-slate-600 font-normal leading-relaxed">
+              Seller attempts to join the buyer union to artificially manipulate quorum count.
+            </p>
+          </button>
+
+          <button
+            onClick={() => handleTriggerAttack('G4_HONOR_PCT')}
+            disabled={triggeringAttack}
+            className="p-3 text-left rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50 text-slate-900 text-xs font-medium space-y-1 transition-all duration-150 disabled:opacity-50"
+          >
+            <div className="flex items-center justify-between text-rose-700 font-semibold text-[11px]">
+              <span>Rule G4: Ghost Inventory</span>
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
+            <p className="text-[11px] text-slate-600 font-normal leading-relaxed">
+              Supplier proposes 55% fulfillment honor rate, violating minimum 80% protocol bar.
+            </p>
+          </button>
+
+          <button
+            onClick={() => handleTriggerAttack('G7_DUPLICATE_SYBIL')}
+            disabled={triggeringAttack}
+            className="p-3 text-left rounded-xl border border-rose-200/80 bg-rose-50/40 hover:bg-rose-50 text-slate-900 text-xs font-medium space-y-1 transition-all duration-150 disabled:opacity-50"
+          >
+            <div className="flex items-center justify-between text-rose-700 font-semibold text-[11px]">
+              <span>Rule G7: Duplicate Payer</span>
+              <ShieldAlert className="w-3.5 h-3.5" />
+            </div>
+            <p className="text-[11px] text-slate-600 font-normal leading-relaxed">
+              Sybil agent attempts multiple registrations using identical PayPal payer accounts.
+            </p>
+          </button>
+        </div>
+
+        {attackFeedback && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between animate-in fade-in duration-150">
+            <span>{attackFeedback}</span>
+            <button
+              onClick={() => setAttackFeedback(null)}
+              className="font-medium text-rose-900 hover:underline text-[11px]"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Blocked Attacks Alert Box */}
       <div className="p-6 rounded-2xl bg-rose-50/60 border border-rose-200/90 shadow-xs space-y-4">
         <div className="flex items-center gap-3">
@@ -69,7 +182,9 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
             <AlertOctagon className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Intercepted adversarial attempts</h3>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Intercepted adversarial attempts ({blockedAttacks.length})
+            </h3>
             <p className="text-xs text-rose-800">
               Deterministic Guard rules intercepted non-compliant seller AI agent inputs
             </p>
@@ -78,9 +193,7 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
 
         {blockedAttacks.length === 0 ? (
           <div className="text-xs text-slate-600 bg-white p-4 rounded-xl border border-rose-200/60">
-            {dataMode === 'live'
-              ? 'No adversarial attacks detected in the live session. In Real-Time mode, if any seller attempts price inflation, ghost-inventory, or cross-side collusion, the Guard rejects it here.'
-              : 'No attacks detected in the current session. Any adversarial attempts from seller bots are intercepted and audited here.'}
+            No attacks detected in the current session. Click any of the 4 test vectors above to simulate live adversarial defense.
           </div>
         ) : (
           <div className="space-y-3">

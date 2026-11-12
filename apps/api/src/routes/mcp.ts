@@ -7,9 +7,12 @@ import type { Membership } from '@quorum/shared/src/types.js';
 export function createMCPRouter(store: AppStore) {
   const router = new Hono();
 
-  // MCP JSON-RPC protocol endpoint
+  // MCP JSON-RPC protocol endpoint (mode-aware)
   router.post('/mcp', async (c) => {
     try {
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+      const state = store.getState(mode);
+
       const body = await c.req.json() as {
         jsonrpc: string;
         id: string | number;
@@ -29,7 +32,7 @@ export function createMCPRouter(store: AppStore) {
                 inputSchema: {
                   type: 'object',
                   properties: {
-                    category: { type: 'string', description: 'Product category (e.g. "monitors", "solar")' },
+                    category: { type: 'string', description: 'Product category (e.g. "monitors", "smartphones", "solar")' },
                   },
                 },
               },
@@ -47,7 +50,7 @@ export function createMCPRouter(store: AppStore) {
               },
               {
                 name: 'join_coalition',
-                description: 'Join an existing buyer coalition. Requires an agent identifier and price limit.',
+                description: 'Join an existing buyer coalition as an autonomous agent. Requires an agent identifier and price limit.',
                 inputSchema: {
                   type: 'object',
                   properties: {
@@ -80,12 +83,12 @@ export function createMCPRouter(store: AppStore) {
         const params = body.params as { name: string; arguments?: Record<string, unknown> };
 
         if (params.name === 'search_coalitions') {
-          const list = Array.from(store.coalitions.values()).map((coalition) => {
-            const product = store.products.get(coalition.productId);
-            const members = store.memberships.get(coalition.id) || [];
+          const list = Array.from(state.coalitions.values()).map((coalition) => {
+            const product = state.products.get(coalition.productId);
+            const members = state.memberships.get(coalition.id) || [];
             return {
               coalitionId: coalition.id,
-              productName: product?.name,
+              productName: product?.name || coalition.specEnvelope.category,
               category: coalition.specEnvelope.category,
               currentMemberCount: members.length,
               quorumTarget: coalition.quorum,
@@ -113,18 +116,43 @@ export function createMCPRouter(store: AppStore) {
 
         if (params.name === 'join_coalition') {
           const args = params.arguments as { coalitionId: string; agentId: string; maxPriceCents?: number };
-          const members = store.memberships.get(args.coalitionId) || [];
+          const coalition = state.coalitions.get(args.coalitionId);
+          if (!coalition) {
+            return c.json({
+              jsonrpc: '2.0',
+              id: body.id,
+              error: { code: -32000, message: `Coalition ${args.coalitionId} not found` },
+            });
+          }
+
+          const members = state.memberships.get(args.coalitionId) || [];
+          const ceiling = args.maxPriceCents || coalition.specEnvelope.priceCeilingCents;
 
           const newMember: Membership = {
             coalitionId: args.coalitionId,
             userId: args.agentId,
-            isSimulated: false,
-            state: MemberState.INTERESTED,
-            approvedMaxCents: args.maxPriceCents,
-            timestamps: { joinedAt: new Date().toISOString() },
+            isSimulated: mode !== 'live',
+            state: MemberState.APPROVED,
+            approvedMaxCents: ceiling,
+            simAuthId: `MCP-AUTH-${Date.now().toString().slice(-4)}`,
+            timestamps: {
+              joinedAt: new Date().toISOString(),
+              approvedAt: new Date().toISOString(),
+            },
           };
           members.push(newMember);
-          store.memberships.set(args.coalitionId, members);
+          state.memberships.set(args.coalitionId, members);
+
+          state.auditLog.unshift({
+            id: `audit_mcp_${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            actor: args.agentId,
+            actorType: 'ai',
+            eventType: 'MCP_AGENT_JOINED',
+            referenceIds: { coalitionId: args.coalitionId },
+            summary: `Autonomous MCP Agent "${args.agentId}" joined pool via JSON-RPC protocol with ceiling $${(ceiling / 100).toFixed(2)}.`,
+            verdict: 'allowed',
+          });
 
           return c.json({
             jsonrpc: '2.0',
@@ -132,7 +160,7 @@ export function createMCPRouter(store: AppStore) {
             result: {
               content: [{
                 type: 'text',
-                text: `Agent ${args.agentId} successfully joined coalition ${args.coalitionId}. Call get_human_approval_link to have your human reserve funds with PayPal.`,
+                text: `Agent "${args.agentId}" successfully connected via MCP to coalition "${args.coalitionId}". Current pool size: ${members.length} agents.`,
               }],
             },
           });
@@ -140,9 +168,10 @@ export function createMCPRouter(store: AppStore) {
 
         if (params.name === 'get_human_approval_link') {
           const args = params.arguments as { coalitionId: string; agentId: string; amountCents: number };
-          const orderRes = await store.simulatedProvider.createOrder(
+          const provider = (mode === 'live' && store.paypalProvider) ? store.paypalProvider : store.simulatedProvider;
+          const orderRes = await provider.createOrder(
             args.amountCents,
-            `MCP Outside Agent Approval for ${args.agentId}`,
+            `MCP Autonomous Agent Approval for ${args.agentId}`,
             `mcp_${args.coalitionId}_${args.agentId}_${Date.now()}`,
           );
 

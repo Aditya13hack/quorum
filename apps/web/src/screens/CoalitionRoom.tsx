@@ -534,6 +534,33 @@ export const CoalitionRoom: React.FC<CoalitionRoomProps> = ({
               </div>
             </div>
           )}
+
+          {/* Two-Sided PayPal Settlement & Payouts Architecture Card */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#003087]" />
+              <h4 className="font-medium text-slate-900 text-sm">Two-Sided PayPal Settlement</h4>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Quorum integrates both sides of PayPal's financial engine: consumer authorization hold escrow and automated supplier milestone payouts.
+            </p>
+
+            <div className="space-y-2 pt-1 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="font-semibold text-slate-900 text-[11px] block">1. Buyer Protection (Orders v2 Hold)</span>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  $0 charged upfront. Authorizations void automatically at zero penalty if quorum threshold is unmet.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <span className="font-semibold text-[#003087] text-[11px] block">2. Supplier Payouts (50/50 Staged Batch)</span>
+                <p className="text-slate-600 text-[11px] leading-relaxed">
+                  Upon quorum execution, 50% upfront disbursement is dispatched to the supplier via PayPal Payouts, with 50% completion retention held until carrier tracking verification.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

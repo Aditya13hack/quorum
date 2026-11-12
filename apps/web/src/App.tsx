@@ -83,7 +83,7 @@ export function App() {
         )}
         {currentTab === 'ledger' && <LedgerScreen dataMode={dataMode} />}
         {currentTab === 'audit' && <AuditScreen dataMode={dataMode} />}
-        {currentTab === 'mcp' && <DeveloperScreen />}
+        {currentTab === 'mcp' && <DeveloperScreen dataMode={dataMode} />}
       </main>
 
       <footer className="border-t border-slate-200/80 bg-white py-8 text-center text-xs text-slate-500">
