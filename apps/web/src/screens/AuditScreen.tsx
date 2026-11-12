@@ -80,7 +80,7 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
           <div className="text-xs text-slate-600 bg-white p-4 rounded-xl border border-rose-200/60">
             {dataMode === 'live'
               ? 'No adversarial attacks detected in the live session. In Real-Time mode, if any seller attempts price inflation, ghost-inventory, or cross-side collusion, the Guard rejects it here.'
-              : 'No attacks detected in the current session. Run Step 3 in the Walkthrough tab to test live defense against Seller Gamma.'}
+              : 'No attacks detected in the current session. Any adversarial attempts from seller bots are intercepted and audited here.'}
           </div>
         ) : (
           <div className="space-y-3">

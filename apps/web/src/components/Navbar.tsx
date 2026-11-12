@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2 } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, Code2 } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
@@ -19,7 +19,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'wish', label: 'Create demand', icon: ShoppingCart },
     { id: 'ledger', label: 'Financial ledger', icon: FileSpreadsheet },
     { id: 'audit', label: 'Safety & guard', icon: ShieldCheck },
-    { id: 'demo', label: 'Walkthrough', icon: PlayCircle },
     { id: 'mcp', label: 'API & MCP', icon: Code2 },
   ];
 

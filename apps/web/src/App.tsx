@@ -4,7 +4,6 @@ import { CoalitionRoom } from './screens/CoalitionRoom.js';
 import { WishScreen } from './screens/WishScreen.js';
 import { LedgerScreen } from './screens/LedgerScreen.js';
 import { AuditScreen } from './screens/AuditScreen.js';
-import { GuidedDemoScreen } from './screens/GuidedDemoScreen.js';
 import { DeveloperScreen } from './screens/DeveloperScreen.js';
 
 export function App() {
@@ -84,12 +83,6 @@ export function App() {
         )}
         {currentTab === 'ledger' && <LedgerScreen dataMode={dataMode} />}
         {currentTab === 'audit' && <AuditScreen dataMode={dataMode} />}
-        {currentTab === 'demo' && (
-          <GuidedDemoScreen onNavigateToRoom={() => {
-            handleToggleDataMode('simulated');
-            handleNavigateToRoom('coalition_monitor_demo');
-          }} />
-        )}
         {currentTab === 'mcp' && <DeveloperScreen />}
       </main>
 
