@@ -34,9 +34,12 @@ export const DeveloperScreen: React.FC<DeveloperScreenProps> = ({ dataMode = 'si
   // Fetch open coalitions
   useEffect(() => {
     fetch(`/api/coalitions?mode=${dataMode}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return { coalitions: [] };
+        return res.json().catch(() => ({ coalitions: [] }));
+      })
       .then((data) => {
-        const coal = data.coalitions || [];
+        const coal = data?.coalitions || [];
         setRooms(coal);
         if (coal.length > 0 && !selectedRoomId) {
           setSelectedRoomId(coal[0].id);
@@ -69,7 +72,7 @@ export const DeveloperScreen: React.FC<DeveloperScreenProps> = ({ dataMode = 'si
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const responseData = await res.json();
+      const responseData = await res.json().catch(() => ({ error: `Server error HTTP ${res.status}` }));
       setMcpLog({ request: payload, response: responseData });
     } catch (e: any) {
       alert('MCP call failed: ' + e.message);

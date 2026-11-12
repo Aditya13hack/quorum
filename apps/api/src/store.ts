@@ -1,3 +1,10 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
 import type {
   Product,
   Coalition,
@@ -63,8 +70,9 @@ export interface AppStore {
 export function createStore(): AppStore {
   const simulatedProvider = new SimulatedProvider();
   const apiKey = process.env.AI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+  const isTest = process.env.NODE_ENV === 'test' || typeof process.env.VITEST !== 'undefined';
   const aiClient = new AIClient({
-    mode: apiKey ? (process.env.AI_MODE as any || 'live') : 'scripted',
+    mode: isTest ? 'scripted' : (apiKey ? (process.env.AI_MODE as any || 'live') : 'scripted'),
     apiKey,
   });
 
@@ -76,9 +84,12 @@ export function createStore(): AppStore {
         clientSecret: process.env.PAYPAL_CLIENT_SECRET,
         webhookId: process.env.PAYPAL_WEBHOOK_ID,
       });
+      console.log('✅ PayPalSandboxProvider initialized successfully');
     } catch (e) {
-      console.warn('PayPalSandboxProvider init failed:', e);
+      console.warn('❌ PayPalSandboxProvider init failed:', e);
     }
+  } else {
+    console.warn('⚠️ PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET missing in environment');
   }
 
   const simulated = createEmptyDataState();

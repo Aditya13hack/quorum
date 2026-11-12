@@ -1,3 +1,11 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Pre-load environment variables from root and local paths
+dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
 import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 
@@ -9,6 +17,7 @@ console.log(`
    Port: http://localhost:${port}
    Environment: ${process.env.PAYPAL_ENV || 'sandbox'} (SANDBOX ONLY)
    AI Mode: ${process.env.AI_MODE || 'scripted'}
+   PayPal Configured: ${Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET)}
 `);
 
 serve({

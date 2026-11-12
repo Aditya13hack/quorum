@@ -130,6 +130,11 @@ export class PayPalSandboxProvider implements PaymentProviderInterface {
           description,
         },
       ],
+      application_context: {
+        return_url: 'http://localhost:5173',
+        cancel_url: 'http://localhost:5173',
+        user_action: 'CONTINUE',
+      },
     }, idempotencyKey) as { id: string; links: Array<{ rel: string; href: string }> };
 
     const approvalLink = data.links?.find((l) => l.rel === 'approve' || l.rel === 'payer-action');

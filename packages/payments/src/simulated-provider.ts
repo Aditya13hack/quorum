@@ -145,7 +145,7 @@ export class SimulatedProvider implements PaymentProviderInterface {
 
     const result: CreateOrderResult = {
       orderId,
-      approvalUrl: `https://sandbox.paypal.com/simulated/approve/${orderId}`,
+      approvalUrl: `http://localhost:5173/?simulated_approved=true&order=${orderId}`,
       provider: 'simulated',
     };
     this.processedIdempotencyKeys.set(idempotencyKey, result);
@@ -163,6 +163,17 @@ export class SimulatedProvider implements PaymentProviderInterface {
 
     const order = this.orders.get(orderId);
     if (!order) throw new Error(`Order ${orderId} not found`);
+
+    // Idempotent recovery if already authorized
+    if (order.status === 'AUTHORIZED' && order.authorizationId) {
+      return {
+        authorizationId: order.authorizationId,
+        status: 'CREATED',
+        amountCents: order.amountCents,
+        provider: 'simulated',
+      };
+    }
+
     if (order.status !== 'APPROVED') {
       throw new Error(`Order ${orderId} is not in APPROVED state (current: ${order.status})`);
     }

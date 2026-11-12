@@ -51,14 +51,14 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
         throw new Error(order.error);
       }
 
-      if (useRealPayPal && order.approvalUrl) {
+      if (useRealPayPal && order.approvalUrl && order.provider === 'paypal') {
         // Real PayPal Sandbox: open approval URL in new window/tab
         setPendingOrderId(order.orderId);
         setApprovalUrl(order.approvalUrl);
         window.open(order.approvalUrl, '_blank', 'width=500,height=700');
         setLoading(false);
       } else {
-        // Simulated: immediately authorize order
+        // Simulated: immediately authorize order without opening popup
         await completeAuthorization(order.orderId, false);
       }
     } catch (e) {

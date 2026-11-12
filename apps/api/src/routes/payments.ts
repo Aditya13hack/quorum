@@ -29,6 +29,12 @@ export function createPaymentRouter(store: AppStore) {
         return c.json({ error: limitVerdict.reason }, 400);
       }
 
+      if (body.useRealPayPal && !store.paypalProvider) {
+        return c.json({
+          error: 'PayPal Sandbox credentials not configured. Please check PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env.',
+        }, 500);
+      }
+
       const idempotencyKey = `order_${body.coalitionId}_${body.userId}_${Date.now()}`;
       const provider = body.useRealPayPal && store.paypalProvider
         ? store.paypalProvider
