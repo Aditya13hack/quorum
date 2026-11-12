@@ -43,8 +43,44 @@ export async function interpretWish(
     substitutesAccepted: [],
   };
 
-  const systemInstruction = `You are Quorum's Wish Interpreter AI. Your job is to convert natural language buying requests into a structured SpecEnvelope JSON object. Categorize properly, identify required attributes, and summarize cleanly. Always respect the user's maximum price ceiling.`;
-  const prompt = `User Request: "${rawWish}". Price ceiling: ${userMaxPriceCents} cents. Deadline: ${deadlineHours} hours.`;
+  const systemInstruction = `You are Quorum's Wish Interpreter AI. Your job is to convert natural language buying requests into a structured SpecEnvelope JSON object.
+You MUST reply strictly with valid JSON conforming to this exact structure:
+{
+  "suggestedProductTitle": "Clean, descriptive product name",
+  "summaryText": "One-sentence summary of the demand pool",
+  "specEnvelope": {
+    "category": "one of: smartphones, monitors, laptops, electronics, solar, lighting, general",
+    "requiredAttributes": { "attributeName": "attributeValue" },
+    "priceCeilingCents": 12345,
+    "deadlineMs": 1700000000000
+  }
+}`;
 
-  return client.generateStructuredJSON<InterpretedWishResult>(prompt, systemInstruction, fallback);
+  const prompt = `User Request: "${rawWish}". Price ceiling: ${userMaxPriceCents} cents. Deadline: ${deadlineHours} hours. Return JSON with suggestedProductTitle, summaryText, and specEnvelope.`;
+
+  const raw = await client.generateStructuredJSON<any>(prompt, systemInstruction, fallback);
+
+  // Guarantee valid structure even if LLM returns partial or top-level properties
+  const rawSpec = raw?.specEnvelope || raw || {};
+  const normalizedCategory = rawSpec?.category || raw?.category || category;
+  const normalizedPriceCeiling = typeof rawSpec?.priceCeilingCents === 'number'
+    ? rawSpec.priceCeilingCents
+    : (typeof raw?.priceCeilingCents === 'number' ? raw.priceCeilingCents : userMaxPriceCents);
+  const normalizedAttributes = (rawSpec?.requiredAttributes && typeof rawSpec.requiredAttributes === 'object' && Object.keys(rawSpec.requiredAttributes).length > 0)
+    ? rawSpec.requiredAttributes
+    : (raw?.requiredAttributes || requiredAttributes);
+
+  return {
+    suggestedProductTitle: raw?.suggestedProductTitle || raw?.title || cleanWish.slice(0, 60),
+    summaryText: raw?.summaryText || fallback.summaryText,
+    specEnvelope: {
+      category: normalizedCategory,
+      requiredAttributes: normalizedAttributes,
+      acceptableRanges: rawSpec?.acceptableRanges || {},
+      priceCeilingCents: normalizedPriceCeiling,
+      acceptableSubstitutes: rawSpec?.acceptableSubstitutes || [],
+      deadlineMs: rawSpec?.deadlineMs || (Date.now() + deadlineHours * 3600 * 1000),
+    },
+    substitutesAccepted: raw?.substitutesAccepted || [],
+  };
 }

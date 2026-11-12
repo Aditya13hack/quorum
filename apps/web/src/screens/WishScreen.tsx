@@ -236,18 +236,20 @@ export const WishScreen: React.FC<WishScreenProps> = ({
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Product category:</span>
-              <span className="font-medium text-slate-900">{result.interpretation.specEnvelope.category}</span>
+              <span className="font-medium text-slate-900 capitalize">
+                {result?.interpretation?.specEnvelope?.category || (result?.interpretation as any)?.category || 'general'}
+              </span>
             </div>
             <div className="flex justify-between py-1 border-b border-slate-200/60">
               <span className="text-slate-500">Price ceiling:</span>
               <span className="font-medium text-slate-900 tabular-nums">
-                ${(result.interpretation.specEnvelope.priceCeilingCents / 100).toFixed(2)}
+                ${(((result?.interpretation?.specEnvelope?.priceCeilingCents ?? (result?.interpretation as any)?.priceCeilingCents ?? maxPrice * 100)) / 100).toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between py-1">
               <span className="text-slate-500">Extracted attributes:</span>
               <span className="font-mono text-slate-700 text-[11px] truncate max-w-sm">
-                {JSON.stringify(result.interpretation.specEnvelope.requiredAttributes)}
+                {JSON.stringify(result?.interpretation?.specEnvelope?.requiredAttributes || (result?.interpretation as any)?.requiredAttributes || { item: wishText })}
               </span>
             </div>
           </div>

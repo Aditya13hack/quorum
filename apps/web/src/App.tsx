@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CoalitionRoom } from './screens/CoalitionRoom.js';
 import { WishScreen } from './screens/WishScreen.js';
 import { LedgerScreen } from './screens/LedgerScreen.js';
@@ -67,23 +68,25 @@ export function App() {
       )}
 
       <main className="flex-1 pb-12">
-        {currentTab === 'room' && (
-          <CoalitionRoom
-            coalitionId={activeCoalitionId}
-            dataMode={dataMode}
-            onSelectCoalition={(id) => setActiveCoalitionId(id)}
-            onNavigateToWish={() => setTab('wish')}
-          />
-        )}
-        {currentTab === 'wish' && (
-          <WishScreen
-            dataMode={dataMode}
-            onNavigateToRoom={handleNavigateToRoom}
-          />
-        )}
-        {currentTab === 'ledger' && <LedgerScreen dataMode={dataMode} />}
-        {currentTab === 'audit' && <AuditScreen dataMode={dataMode} />}
-        {currentTab === 'mcp' && <DeveloperScreen dataMode={dataMode} />}
+        <ErrorBoundary>
+          {currentTab === 'room' && (
+            <CoalitionRoom
+              coalitionId={activeCoalitionId}
+              dataMode={dataMode}
+              onSelectCoalition={(id) => setActiveCoalitionId(id)}
+              onNavigateToWish={() => setTab('wish')}
+            />
+          )}
+          {currentTab === 'wish' && (
+            <WishScreen
+              dataMode={dataMode}
+              onNavigateToRoom={handleNavigateToRoom}
+            />
+          )}
+          {currentTab === 'ledger' && <LedgerScreen dataMode={dataMode} />}
+          {currentTab === 'audit' && <AuditScreen dataMode={dataMode} />}
+          {currentTab === 'mcp' && <DeveloperScreen dataMode={dataMode} />}
+        </ErrorBoundary>
       </main>
 
       <footer className="border-t border-slate-200/80 bg-white py-8 text-center text-xs text-slate-500">
