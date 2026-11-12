@@ -1,12 +1,19 @@
 import React from 'react';
-import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2 } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
   setTab: (tab: string) => void;
+  isRealPayPalMode: boolean;
+  setIsRealPayPalMode: (val: boolean) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentTab, setTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  currentTab,
+  setTab,
+  isRealPayPalMode,
+  setIsRealPayPalMode,
+}) => {
   const tabs = [
     { id: 'room', label: 'Coalition room', icon: Activity },
     { id: 'wish', label: 'Create demand', icon: ShoppingCart },
@@ -52,10 +59,20 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setTab }) => {
           })}
         </nav>
 
-        {/* Sandbox Badge */}
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-          <span className="font-medium text-slate-700">PayPal Sandbox</span>
+        {/* Real vs Simulated Toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsRealPayPalMode(!isRealPayPalMode)}
+            className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors duration-150 ${
+              isRealPayPalMode
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-slate-100 border-slate-200 text-slate-700'
+            }`}
+            title="Click to toggle between real PayPal Sandbox and simulated testing"
+          >
+            <span className={`w-2 h-2 rounded-full ${isRealPayPalMode ? 'bg-emerald-600' : 'bg-slate-400'}`}></span>
+            <span>{isRealPayPalMode ? 'PayPal Sandbox' : 'Simulated Test'}</span>
+          </button>
         </div>
       </div>
 

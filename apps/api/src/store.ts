@@ -216,6 +216,122 @@ export function seedStore(store: AppStore): void {
 
   store.memberships.set(coalitionId, initialMembers);
 
+  // ─── 2. Seed Solar Microgrid Coalition ────────────────────────────────
+  const solarCoalitionId = 'coalition_solar_demo';
+  const solarCoalition: Coalition = {
+    id: solarCoalitionId,
+    productId: solarKit.id,
+    specEnvelope: {
+      category: 'solar',
+      requiredAttributes: { capacity: '5kW Hybrid Inverter + 10kWh LiFePO4' },
+      acceptableRanges: { capacityKw: { min: 5, max: 10 } },
+      priceCeilingCents: 250000,
+      acceptableSubstitutes: ['Residential Microgrid', 'Home Battery Storage'],
+      deadlineMs: Date.now() + 72 * 3600 * 1000,
+    },
+    state: CoalitionState.COLLECTING,
+    quorum: 6, // 5 + 10% safety margin
+    safetyMarginPct: 10,
+    deadlineMs: Date.now() + 72 * 3600 * 1000,
+    timeScale: store.timeScale,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  store.coalitions.set(solarCoalitionId, solarCoalition);
+
+  const solarOffer: SellerOffer = {
+    id: 'offer_solar_1',
+    sellerId: 'seller_ecovolt',
+    coalitionId: solarCoalitionId,
+    productId: solarKit.id,
+    tierLadder: [
+      { minBuyers: 3, priceCents: 210000 },
+      { minBuyers: 5, priceCents: 195000 },
+      { minBuyers: 10, priceCents: 179000 },
+    ],
+    honorPct: 98,
+    deliveryDays: 10,
+    hiddenFloorCents: 170000,
+    notes: 'Certified Tier-1 solar panels with 25-year manufacturer warranty and free commercial pallet delivery.',
+    status: OfferStatus.ACTIVE,
+  };
+  store.sellerOffers.set(solarCoalitionId, [solarOffer]);
+
+  const solarMembers: Membership[] = [];
+  for (let i = 1; i <= 4; i++) {
+    solarMembers.push({
+      coalitionId: solarCoalitionId,
+      userId: `solar_buyer_${i}`,
+      isSimulated: true,
+      state: MemberState.APPROVED,
+      approvedMaxCents: 230000,
+      simAuthId: `SIM-SOLAR-${i}`,
+      timestamps: {
+        joinedAt: new Date().toISOString(),
+        approvedAt: new Date().toISOString(),
+      },
+    });
+  }
+  store.memberships.set(solarCoalitionId, solarMembers);
+
+  // ─── 3. Seed Commercial LED Fixture Coalition ──────────────────────────
+  const ledCoalitionId = 'coalition_led_demo';
+  const ledCoalition: Coalition = {
+    id: ledCoalitionId,
+    productId: ledBundle.id,
+    specEnvelope: {
+      category: 'lighting',
+      requiredAttributes: { lumens: '150W 21000lm 5000K Daylight' },
+      acceptableRanges: { wattage: { min: 100, max: 200 } },
+      priceCeilingCents: 65000,
+      acceptableSubstitutes: ['Industrial High-Bay', 'Warehouse LED'],
+      deadlineMs: Date.now() + 96 * 3600 * 1000,
+    },
+    state: CoalitionState.COLLECTING,
+    quorum: 11, // 10 + 10% safety margin
+    safetyMarginPct: 10,
+    deadlineMs: Date.now() + 96 * 3600 * 1000,
+    timeScale: store.timeScale,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  store.coalitions.set(ledCoalitionId, ledCoalition);
+
+  const ledOffer: SellerOffer = {
+    id: 'offer_led_1',
+    sellerId: 'seller_lumens_direct',
+    coalitionId: ledCoalitionId,
+    productId: ledBundle.id,
+    tierLadder: [
+      { minBuyers: 5, priceCents: 58000 },
+      { minBuyers: 10, priceCents: 52000 },
+      { minBuyers: 25, priceCents: 47500 },
+    ],
+    honorPct: 92,
+    deliveryDays: 3,
+    hiddenFloorCents: 45000,
+    notes: 'Direct from lighting factory. IP65 rated commercial grade with 5-year replacement guarantee.',
+    status: OfferStatus.ACTIVE,
+  };
+  store.sellerOffers.set(ledCoalitionId, [ledOffer]);
+
+  const ledMembers: Membership[] = [];
+  for (let i = 1; i <= 8; i++) {
+    ledMembers.push({
+      coalitionId: ledCoalitionId,
+      userId: `contractor_buyer_${i}`,
+      isSimulated: true,
+      state: MemberState.APPROVED,
+      approvedMaxCents: 62000,
+      simAuthId: `SIM-LED-${i}`,
+      timestamps: {
+        joinedAt: new Date().toISOString(),
+        approvedAt: new Date().toISOString(),
+      },
+    });
+  }
+  store.memberships.set(ledCoalitionId, ledMembers);
+
   store.auditLog.push({
     id: 'audit_init_1',
     timestamp: new Date().toISOString(),
@@ -223,7 +339,7 @@ export function seedStore(store: AppStore): void {
     actorType: 'system',
     eventType: 'COALITION_SEEDED',
     referenceIds: { coalitionId },
-    summary: 'Seeded initial coalition demo room with 15 simulated buyers and 2 seller offers.',
+    summary: 'Seeded initial coalition demo rooms (Monitors, Solar Kits, LED Fixtures) with simulated buyers and seller offers.',
     verdict: 'allowed',
   });
 }

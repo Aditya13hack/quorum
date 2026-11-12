@@ -9,17 +9,41 @@ import { DeveloperScreen } from './screens/DeveloperScreen.js';
 
 export function App() {
   const [currentTab, setTab] = useState('room');
+  const [activeCoalitionId, setActiveCoalitionId] = useState('coalition_monitor_demo');
+  const [isRealPayPalMode, setIsRealPayPalMode] = useState(true);
+
+  const handleNavigateToRoom = (newCoalitionId?: string) => {
+    if (newCoalitionId) {
+      setActiveCoalitionId(newCoalitionId);
+    }
+    setTab('room');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 antialiased selection:bg-blue-100 selection:text-[#003087]">
-      <Navbar currentTab={currentTab} setTab={setTab} />
+      <Navbar
+        currentTab={currentTab}
+        setTab={setTab}
+        isRealPayPalMode={isRealPayPalMode}
+        setIsRealPayPalMode={setIsRealPayPalMode}
+      />
 
       <main className="flex-1 pb-12">
-        {currentTab === 'room' && <CoalitionRoom />}
-        {currentTab === 'wish' && <WishScreen onNavigateToRoom={() => setTab('room')} />}
+        {currentTab === 'room' && (
+          <CoalitionRoom
+            coalitionId={activeCoalitionId}
+            isRealPayPalMode={isRealPayPalMode}
+            onSelectCoalition={(id) => setActiveCoalitionId(id)}
+          />
+        )}
+        {currentTab === 'wish' && (
+          <WishScreen onNavigateToRoom={handleNavigateToRoom} />
+        )}
         {currentTab === 'ledger' && <LedgerScreen />}
         {currentTab === 'audit' && <AuditScreen />}
-        {currentTab === 'demo' && <GuidedDemoScreen onNavigateToRoom={() => setTab('room')} />}
+        {currentTab === 'demo' && (
+          <GuidedDemoScreen onNavigateToRoom={() => handleNavigateToRoom('coalition_monitor_demo')} />
+        )}
         {currentTab === 'mcp' && <DeveloperScreen />}
       </main>
 

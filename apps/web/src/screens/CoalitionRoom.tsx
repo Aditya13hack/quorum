@@ -3,17 +3,49 @@ import { PriceCurve } from '../components/PriceCurve.js';
 import { QuorumMeter } from '../components/QuorumMeter.js';
 import { RosterTable } from '../components/RosterTable.js';
 import { ApprovalModal } from '../components/ApprovalModal.js';
-import { Shield, Zap, ArrowDownRight, CheckCircle2, ShieldCheck, Store, Lock, Info } from 'lucide-react';
+import { Shield, Zap, ArrowDownRight, CheckCircle2, ShieldCheck, Store, Lock, UserPlus, Sparkles, RefreshCw } from 'lucide-react';
 
-export const CoalitionRoom: React.FC = () => {
+interface CoalitionRoomProps {
+  coalitionId?: string;
+  isRealPayPalMode?: boolean;
+  onSelectCoalition?: (id: string) => void;
+}
+
+export const CoalitionRoom: React.FC<CoalitionRoomProps> = ({
+  coalitionId = 'coalition_monitor_demo',
+  isRealPayPalMode = true,
+  onSelectCoalition,
+}) => {
+  const [activeId, setActiveId] = useState(coalitionId);
   const [data, setData] = useState<any>(null);
+  const [allRooms, setAllRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
+  // New member input for user and teammates
+  const [newMemberName, setNewMemberName] = useState('');
+  const [joining, setJoining] = useState(false);
+  const [negotiating, setNegotiating] = useState(false);
+
+  useEffect(() => {
+    setActiveId(coalitionId);
+  }, [coalitionId]);
+
+  const fetchRooms = async () => {
+    try {
+      const res = await fetch('/api/coalitions');
+      const json = await res.json();
+      setAllRooms(json.coalitions || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/coalitions/coalition_monitor_demo');
+      const res = await fetch(`/api/coalitions/${activeId}`);
+      if (!res.ok) throw new Error('Not found');
       const json = await res.json();
       setData(json);
     } catch (e) {
@@ -24,17 +56,65 @@ export const CoalitionRoom: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchRooms();
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [activeId]);
+
+  // Handle User or Teammate Joining
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberName.trim()) return;
+
+    setJoining(true);
+    try {
+      const res = await fetch(`/api/coalitions/${activeId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: newMemberName.trim(),
+          isSimulated: false,
+        }),
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+
+      setActionMessage(`Participant ${newMemberName} joined the coalition pool.`);
+      setNewMemberName('');
+      fetchData();
+    } catch (err: any) {
+      alert('Join failed: ' + err.message);
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  // Handle Real-time AI Negotiation
+  const handleNegotiate = async () => {
+    setNegotiating(true);
+    try {
+      const res = await fetch(`/api/coalitions/${activeId}/negotiate`, {
+        method: 'POST',
+      });
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+
+      setActionMessage(result.message);
+      fetchData();
+    } catch (err: any) {
+      alert('Negotiation failed: ' + err.message);
+    } finally {
+      setNegotiating(false);
+    }
+  };
 
   const handleLockAndCapture = async () => {
     try {
       const res = await fetch('/api/payments/lock-and-capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coalitionId: 'coalition_monitor_demo' }),
+        body: JSON.stringify({ coalitionId: activeId }),
       });
       const result = await res.json();
       setActionMessage(`Quorum locked. ${result.capturesExecuted} authorizations captured at $${(result.finalPriceCents / 100).toFixed(2)}. First staged supplier payout dispatched.`);
@@ -49,7 +129,7 @@ export const CoalitionRoom: React.FC = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-2">
           <div className="w-6 h-6 border-2 border-slate-300 border-t-[#003087] rounded-full animate-spin mx-auto"></div>
-          <p className="text-slate-500 text-xs">Connecting to coalition room</p>
+          <p className="text-slate-500 text-xs">Loading coalition room data...</p>
         </div>
       </div>
     );
@@ -60,6 +140,30 @@ export const CoalitionRoom: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Room Selector Pills */}
+      <div className="flex items-center justify-between pb-1 overflow-x-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500">Active Room:</span>
+          {allRooms.map((room) => (
+            <button
+              key={room.id}
+              onClick={() => {
+                setActiveId(room.id);
+                if (onSelectCoalition) onSelectCoalition(room.id);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors duration-150 border ${
+                activeId === room.id
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border-slate-200'
+              }`}
+            >
+              <span>{room.name}</span>
+              <span className="ml-1.5 text-[10px] opacity-75">({room.memberCount} buyers)</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Product Summary & Execution Banner */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -74,13 +178,13 @@ export const CoalitionRoom: React.FC = () => {
               </span>
               <span className="text-xs text-slate-300">•</span>
               <span className="text-xs text-slate-500">
-                15 shopping agents pooled
+                {memberCount} shopping agents pooled
               </span>
             </div>
 
             <div>
               <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-                {product?.name || '27-inch 4K IPS Pro Monitor'}
+                {product?.name || 'Autonomous Buyer Coalition'}
               </h1>
               <p className="text-slate-500 text-xs sm:text-sm mt-0.5 max-w-2xl leading-relaxed">
                 Autonomous buyer agents coordinate aggregate volume. The unit price steps down automatically as each new buyer reserves a spot.
@@ -89,17 +193,13 @@ export const CoalitionRoom: React.FC = () => {
 
             {/* Spec tags */}
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-600">
+              {Object.entries(coalition.specEnvelope.requiredAttributes || {}).map(([key, val]) => (
+                <span key={key} className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
+                  {key}: <span className="font-medium text-slate-800">{String(val)}</span>
+                </span>
+              ))}
               <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                Panel: <span className="font-medium text-slate-800">{coalition.specEnvelope.requiredAttributes.panel}</span>
-              </span>
-              <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                Resolution: <span className="font-medium text-slate-800">{coalition.specEnvelope.requiredAttributes.resolution}</span>
-              </span>
-              <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                Refresh rate: <span className="font-medium text-slate-800">60Hz+</span>
-              </span>
-              <span className="px-2.5 py-1 bg-slate-50 border border-slate-200 rounded-lg">
-                Shipping: <span className="font-medium text-slate-800">Included</span>
+                Delivery: <span className="font-medium text-slate-800">Included</span>
               </span>
             </div>
           </div>
@@ -145,7 +245,7 @@ export const CoalitionRoom: React.FC = () => {
       </div>
 
       {actionMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{actionMessage}</span>
@@ -170,6 +270,43 @@ export const CoalitionRoom: React.FC = () => {
             tiers={winningOffer?.tierLadder || []}
           />
 
+          {/* Join Coalition as Participant/Agent & AI Negotiation Bar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h4 className="font-medium text-slate-900 text-sm">Join Coalition or Trigger Negotiation</h4>
+                <p className="text-xs text-slate-500">You and your teammates can add agent handles to this live room</p>
+              </div>
+
+              <button
+                onClick={handleNegotiate}
+                disabled={negotiating}
+                className="px-3 py-1.5 rounded-xl border border-[#003087] text-[#003087] hover:bg-blue-50 text-xs font-medium flex items-center gap-1.5 transition-colors duration-150 self-start sm:self-center"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${negotiating ? 'animate-spin' : ''}`} />
+                <span>{negotiating ? 'Negotiating with sellers...' : 'Bargain with Seller AI'}</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleJoin} className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <input
+                type="text"
+                placeholder="Enter handle (e.g. Aditya, Alex, Agent-4)"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-[#003087]"
+              />
+              <button
+                type="submit"
+                disabled={joining || !newMemberName.trim()}
+                className="px-4 py-2 rounded-xl bg-[#003087] hover:bg-[#00256c] disabled:opacity-60 text-white font-medium text-xs flex items-center gap-1.5 transition-colors duration-150"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{joining ? 'Joining...' : 'Join Pool'}</span>
+              </button>
+            </form>
+          </div>
+
           <RosterTable members={data.members} />
         </div>
 
@@ -187,7 +324,7 @@ export const CoalitionRoom: React.FC = () => {
               <div>
                 <h4 className="font-medium text-slate-900 text-sm">Human authorization</h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  The AI negotiated this tier. Authorize with PayPal Sandbox to lock in your position.
+                  The AI negotiated this tier. Authorize with PayPal to lock in your position.
                 </p>
               </div>
               <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[#003087] shrink-0">
@@ -215,7 +352,7 @@ export const CoalitionRoom: React.FC = () => {
               className="w-full py-2.5 px-4 rounded-xl bg-[#003087] hover:bg-[#00256c] text-white font-medium text-xs shadow-xs transition-colors duration-150 flex items-center justify-center gap-2"
             >
               <Shield className="w-4 h-4" />
-              <span>Review and authorize in sandbox</span>
+              <span>Review and authorize spot</span>
             </button>
 
             {approvedCount >= quorumTarget && coalition.state === 'COLLECTING' && (
@@ -295,9 +432,10 @@ export const CoalitionRoom: React.FC = () => {
         finalPriceCents={currentPriceCents}
         soloPriceCents={soloPriceCents}
         savingsCents={savingsCents}
-        coalitionId={coalition.id}
+        coalitionId={activeId}
+        isRealPayPalMode={isRealPayPalMode}
         onApproveSuccess={(authId, isReal) => {
-          setActionMessage(`Reservation authorization created (${authId}). Funds held safely in PayPal sandbox.`);
+          setActionMessage(`Reservation authorization confirmed (${authId}). Funds held safely in PayPal ${isReal ? 'Sandbox' : 'Escrow'}.`);
           fetchData();
         }}
       />
