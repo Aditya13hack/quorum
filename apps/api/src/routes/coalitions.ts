@@ -165,7 +165,9 @@ export function createCoalitionRouter(store: AppStore) {
         specEnvelope: {
           category,
           requiredAttributes: body.requiredAttributes || {},
+          acceptableRanges: {},
           priceCeilingCents: body.priceCeilingCents,
+          acceptableSubstitutes: [],
           deadlineMs,
         },
         state: CoalitionState.COLLECTING,

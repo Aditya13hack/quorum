@@ -28,6 +28,10 @@ export const WishScreen: React.FC<WishScreenProps> = ({
   const fetchCoalitions = async () => {
     try {
       const res = await fetch(`/api/coalitions?mode=${dataMode}`);
+      if (!res.ok) {
+        console.warn('Coalitions endpoint returned status', res.status);
+        return;
+      }
       const data = await res.json();
       setAllCoalitions(data.coalitions || []);
     } catch (e) {
@@ -51,11 +55,22 @@ export const WishScreen: React.FC<WishScreenProps> = ({
           deadlineHours: deadlineDays * 24,
         }),
       });
+      if (!res.ok) {
+        const errText = await res.text();
+        let message = `API server error (${res.status})`;
+        try {
+          const errJson = JSON.parse(errText);
+          message = errJson.error || errJson.message || message;
+        } catch {
+          if (errText) message = errText;
+        }
+        throw new Error(message);
+      }
       const data = await res.json();
       setResult(data);
       await fetchCoalitions();
-    } catch (e) {
-      alert('Interpretation failed: ' + String(e));
+    } catch (e: any) {
+      alert('Interpretation failed: ' + (e?.message || String(e)));
     } finally {
       setLoading(false);
     }
@@ -64,8 +79,8 @@ export const WishScreen: React.FC<WishScreenProps> = ({
   const handleCreateNewRoom = async () => {
     setCreatingRoom(true);
     try {
-      const category = result?.interpretation?.specEnvelope?.category || 'custom';
-      const attributes = result?.interpretation?.specEnvelope?.requiredAttributes || {};
+      const category = result?.interpretation?.specEnvelope?.category || 'electronics';
+      const attributes = result?.interpretation?.specEnvelope?.requiredAttributes || { item: wishText };
       const res = await fetch(`/api/coalitions?mode=${dataMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,14 +94,19 @@ export const WishScreen: React.FC<WishScreenProps> = ({
         }),
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `Server returned ${res.status}`);
+      }
+
       const newRoom = await res.json();
       if (newRoom.error) throw new Error(newRoom.error);
 
       // Refresh and switch to new room
       await fetchCoalitions();
       onNavigateToRoom(newRoom.coalition.id);
-    } catch (e) {
-      alert('Failed to create new room: ' + String(e));
+    } catch (e: any) {
+      alert('Failed to create new room: ' + (e?.message || String(e)));
     } finally {
       setCreatingRoom(false);
     }

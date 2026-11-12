@@ -62,7 +62,11 @@ export interface AppStore {
 
 export function createStore(): AppStore {
   const simulatedProvider = new SimulatedProvider();
-  const aiClient = new AIClient({ mode: 'scripted' });
+  const apiKey = process.env.AI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+  const aiClient = new AIClient({
+    mode: apiKey ? (process.env.AI_MODE as any || 'live') : 'scripted',
+    apiKey,
+  });
 
   let paypalProvider: PayPalSandboxProvider | undefined;
   if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
@@ -107,6 +111,10 @@ export function createStore(): AppStore {
 
   seedSimulatedState(simulated, store.timeScale);
   return store;
+}
+
+export function seedStore(store: AppStore): void {
+  seedSimulatedState(store.simulated, store.timeScale);
 }
 
 export function seedSimulatedState(state: DataState, timeScale: number): void {

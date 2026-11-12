@@ -12,6 +12,9 @@ export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated'
   const fetchAudit = async () => {
     try {
       const res = await fetch(`/api/audit?mode=${dataMode}`);
+      if (!res.ok) {
+        return;
+      }
       const json = await res.json();
       setData(json);
     } catch (e) {

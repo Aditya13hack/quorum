@@ -15,6 +15,9 @@ export const LedgerScreen: React.FC<LedgerScreenProps> = ({ dataMode = 'simulate
       const base = filterType === 'ALL' ? '/api/ledger' : `/api/ledger?type=${filterType}`;
       const url = base.includes('?') ? `${base}&mode=${dataMode}` : `${base}?mode=${dataMode}`;
       const res = await fetch(url);
+      if (!res.ok) {
+        return;
+      }
       const json = await res.json();
       setData(json);
     } catch (e) {

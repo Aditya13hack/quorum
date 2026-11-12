@@ -44,6 +44,10 @@ export const CoalitionRoom: React.FC<CoalitionRoomProps> = ({
   const fetchRooms = async () => {
     try {
       const res = await fetch(`/api/coalitions?mode=${dataMode}`);
+      if (!res.ok) {
+        setAllRooms([]);
+        return;
+      }
       const json = await res.json();
       const rooms = json.coalitions || [];
       setAllRooms(rooms);
@@ -55,6 +59,7 @@ export const CoalitionRoom: React.FC<CoalitionRoomProps> = ({
       }
     } catch (e) {
       console.error(e);
+      setAllRooms([]);
     }
   };
 

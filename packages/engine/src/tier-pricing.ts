@@ -13,7 +13,7 @@
 /** One step on a tiered-pricing ladder. */
 export interface TierStep {
   /** Human-readable label (e.g. "Tier 1 – Bronze"). */
-  readonly label: string;
+  readonly label?: string;
   /** Minimum number of buyers required to unlock this tier (inclusive). */
   readonly minBuyers: number;
   /** Per-unit price in **integer cents** at this tier. */
