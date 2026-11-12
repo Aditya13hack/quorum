@@ -131,9 +131,12 @@ export class PayPalSandboxProvider implements PaymentProviderInterface {
         },
       ],
       application_context: {
+        brand_name: 'Quorum Protocol',
+        landing_page: 'LOGIN',
+        shipping_preference: 'NO_SHIPPING',
+        user_action: 'CONTINUE',
         return_url: 'http://localhost:5173',
         cancel_url: 'http://localhost:5173',
-        user_action: 'CONTINUE',
       },
     }, idempotencyKey) as { id: string; links: Array<{ rel: string; href: string }> };
 
