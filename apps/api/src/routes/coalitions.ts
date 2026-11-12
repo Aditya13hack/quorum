@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { AppStore } from '../store.js';
+import type { AppStore, DataState } from '../store.js';
 import {
   findActiveTier,
   calculateQuorum,
@@ -7,17 +7,17 @@ import {
 } from '@quorum/engine/src/tier-pricing.js';
 import { MemberState, CoalitionState, OfferStatus } from '@quorum/shared/src/enums.js';
 import type { Membership, Coalition, Product, SellerOffer } from '@quorum/shared/src/types.js';
-import { checkSellerNotBuyer, checkPriceLimit } from '@quorum/guard/src/guard.js';
+import { checkSellerNotBuyer } from '@quorum/guard/src/guard.js';
 
 export function createCoalitionRouter(store: AppStore) {
   const router = new Hono();
 
-  // Helper to compute coalition metrics
-  function getCoalitionSummary(coalition: Coalition) {
+  // Helper to compute coalition metrics using given state
+  function getCoalitionSummary(coalition: Coalition, state: DataState) {
     const id = coalition.id;
-    const members = store.memberships.get(id) || [];
-    const offers = store.sellerOffers.get(id) || [];
-    const product = store.products.get(coalition.productId);
+    const members = state.memberships.get(id) || [];
+    const offers = state.sellerOffers.get(id) || [];
+    const product = state.products.get(coalition.productId);
 
     const winningOffer = offers[0];
     const approvedMembers = members.filter(
@@ -59,21 +59,26 @@ export function createCoalitionRouter(store: AppStore) {
     };
   }
 
-  // 1. List all active coalitions with rich live metrics
+  // 1. List active coalitions (mode-aware)
   router.get('/coalitions', (c) => {
-    const summaries = Array.from(store.coalitions.values()).map(getCoalitionSummary);
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+    const summaries = Array.from(state.coalitions.values()).map((coal) => getCoalitionSummary(coal, state));
     return c.json({ coalitions: summaries });
   });
 
-  // 2. Get specific coalition room details
+  // 2. Get specific coalition room details (mode-aware)
   router.get('/coalitions/:id', (c) => {
     const id = c.req.param('id');
-    const coalition = store.coalitions.get(id);
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+
+    const coalition = state.coalitions.get(id);
     if (!coalition) return c.json({ error: 'Coalition not found' }, 404);
 
-    const members = store.memberships.get(id) || [];
-    const offers = store.sellerOffers.get(id) || [];
-    const product = store.products.get(coalition.productId);
+    const members = state.memberships.get(id) || [];
+    const offers = state.sellerOffers.get(id) || [];
+    const product = state.products.get(coalition.productId);
 
     const winningOffer = offers[0];
     const approvedMembers = members.filter(
@@ -118,9 +123,12 @@ export function createCoalitionRouter(store: AppStore) {
     });
   });
 
-  // 3. Create a brand new coalition dynamically from a shopping wish
+  // 3. Create a brand new coalition dynamically
   router.post('/coalitions', async (c) => {
     try {
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+      const state = store.getState(mode);
+
       const body = await c.req.json() as {
         name: string;
         category?: string;
@@ -144,10 +152,10 @@ export function createCoalitionRouter(store: AppStore) {
         name: body.name,
         category,
         attributes: body.requiredAttributes || {},
-        samplePriceCents: Math.round(body.priceCeilingCents * 1.05), // Retail benchmark is 5% above ceiling
+        samplePriceCents: Math.round(body.priceCeilingCents * 1.05),
         priceSource: 'sample',
       };
-      store.products.set(productId, product);
+      state.products.set(productId, product);
 
       // Create coalition
       const deadlineMs = Date.now() + (body.deadlineHours || 72) * 3600 * 1000;
@@ -168,9 +176,9 @@ export function createCoalitionRouter(store: AppStore) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      store.coalitions.set(coalitionId, coalition);
+      state.coalitions.set(coalitionId, coalition);
 
-      // Generate competitive seller tier ladders based on user ceiling
+      // Competitive seller tier ladders
       const ceiling = body.priceCeilingCents;
       const alphaOffer: SellerOffer = {
         id: `offer_alpha_${Date.now()}`,
@@ -206,24 +214,24 @@ export function createCoalitionRouter(store: AppStore) {
         status: OfferStatus.ACTIVE,
       };
 
-      store.sellerOffers.set(coalitionId, [alphaOffer, betaOffer]);
+      state.sellerOffers.set(coalitionId, [alphaOffer, betaOffer]);
 
-      // Seed creator or 1 initial member
+      // Seed creator member
       const initialMember: Membership = {
         coalitionId,
         userId: body.creatorUserId || `buyer_${Math.floor(Math.random() * 900) + 100}`,
-        isSimulated: false,
+        isSimulated: mode !== 'live',
         state: MemberState.APPROVED,
         approvedMaxCents: ceiling,
-        simAuthId: `AUTH-${Date.now().toString().slice(-6)}`,
+        simAuthId: mode !== 'live' ? `AUTH-${Date.now().toString().slice(-6)}` : undefined,
         timestamps: {
           joinedAt: new Date().toISOString(),
-          approvedAt: new Date().toISOString(),
+          approvedAt: mode !== 'live' ? new Date().toISOString() : undefined,
         },
       };
-      store.memberships.set(coalitionId, [initialMember]);
+      state.memberships.set(coalitionId, [initialMember]);
 
-      store.auditLog.push({
+      state.auditLog.push({
         id: `audit_create_${Date.now()}`,
         timestamp: new Date().toISOString(),
         actor: initialMember.userId,
@@ -237,7 +245,7 @@ export function createCoalitionRouter(store: AppStore) {
       return c.json({
         coalition,
         product,
-        summary: getCoalitionSummary(coalition),
+        summary: getCoalitionSummary(coalition, state),
       }, 201);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -248,7 +256,10 @@ export function createCoalitionRouter(store: AppStore) {
   // 4. Join a coalition (User or Teammate Agent)
   router.post('/coalitions/:id/join', async (c) => {
     const id = c.req.param('id');
-    const coalition = store.coalitions.get(id);
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+
+    const coalition = state.coalitions.get(id);
     if (!coalition) return c.json({ error: 'Coalition not found' }, 404);
 
     const body = await c.req.json() as {
@@ -261,20 +272,20 @@ export function createCoalitionRouter(store: AppStore) {
       return c.json({ error: 'userId is required' }, 400);
     }
 
-    const members = store.memberships.get(id) || [];
+    const members = state.memberships.get(id) || [];
     const existing = members.find((m) => m.userId === body.userId);
     if (existing) {
       return c.json({ message: 'User is already a member', member: existing });
     }
 
     // Guard G8: Check user is not a seller in this coalition
-    const sellerIds = (store.sellerOffers.get(id) || []).map((o) => o.sellerId);
+    const sellerIds = (state.sellerOffers.get(id) || []).map((o) => o.sellerId);
     const sellerVerdict = checkSellerNotBuyer(body.userId, sellerIds);
     if (!sellerVerdict.allowed) {
       return c.json({ error: sellerVerdict.reason }, 403);
     }
 
-    const isSimulated = body.isSimulated ?? false;
+    const isSimulated = mode === 'live' ? false : (body.isSimulated ?? false);
     const newMember: Membership = {
       coalitionId: id,
       userId: body.userId,
@@ -289,9 +300,9 @@ export function createCoalitionRouter(store: AppStore) {
     };
 
     members.push(newMember);
-    store.memberships.set(id, members);
+    state.memberships.set(id, members);
 
-    store.auditLog.push({
+    state.auditLog.push({
       id: `audit_join_${Date.now()}`,
       timestamp: new Date().toISOString(),
       actor: body.userId,
@@ -308,17 +319,19 @@ export function createCoalitionRouter(store: AppStore) {
   // 5. Trigger live AI negotiation round
   router.post('/coalitions/:id/negotiate', async (c) => {
     const id = c.req.param('id');
-    const coalition = store.coalitions.get(id);
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+
+    const coalition = state.coalitions.get(id);
     if (!coalition) return c.json({ error: 'Coalition not found' }, 404);
 
-    const members = store.memberships.get(id) || [];
-    const offers = store.sellerOffers.get(id) || [];
+    const members = state.memberships.get(id) || [];
+    const offers = state.sellerOffers.get(id) || [];
 
     if (offers.length === 0) {
       return c.json({ error: 'No seller offers to negotiate' }, 400);
     }
 
-    // Seller Alpha lowers the current ladder price by an extra $5.00/unit because of fresh collective volume
     const discountCents = 500;
     offers.forEach((offer) => {
       offer.tierLadder.forEach((tier) => {
@@ -329,7 +342,7 @@ export function createCoalitionRouter(store: AppStore) {
     const winningOffer = offers[0];
     const message = `Real-time negotiation round complete. Supplier ${winningOffer.sellerId} conceded an extra $5.00/unit across bulk tiers in response to pooled demand (${members.length} buyers).`;
 
-    store.auditLog.push({
+    state.auditLog.push({
       id: `audit_nego_${Date.now()}`,
       timestamp: new Date().toISOString(),
       actor: 'QuorumNegotiatorAI',
@@ -344,7 +357,7 @@ export function createCoalitionRouter(store: AppStore) {
       success: true,
       message,
       offers,
-      summary: getCoalitionSummary(coalition),
+      summary: getCoalitionSummary(coalition, state),
     });
   });
 

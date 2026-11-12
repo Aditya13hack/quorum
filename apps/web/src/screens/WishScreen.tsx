@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, CheckCircle2, Sliders, Clock, DollarSign, Users, PlusCircle, ArrowDownRight, Tag } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Sliders, Clock, DollarSign, Users, PlusCircle } from 'lucide-react';
 
 interface WishScreenProps {
+  dataMode?: 'simulated' | 'live';
   onNavigateToRoom: (coalitionId?: string) => void;
 }
 
-export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
+export const WishScreen: React.FC<WishScreenProps> = ({
+  dataMode = 'simulated',
+  onNavigateToRoom,
+}) => {
   const [wishText, setWishText] = useState('27-inch 4K IPS monitor with 60Hz+ refresh rate');
   const [maxPrice, setMaxPrice] = useState(380);
   const [deadlineDays, setDeadlineDays] = useState(3);
@@ -20,10 +24,10 @@ export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
     'Commercial 150W high-bay LED 10-pack bundle',
   ];
 
-  // Fetch all existing coalition rooms on mount
+  // Fetch all existing coalition rooms on mount and whenever dataMode changes
   const fetchCoalitions = async () => {
     try {
-      const res = await fetch('/api/coalitions');
+      const res = await fetch(`/api/coalitions?mode=${dataMode}`);
       const data = await res.json();
       setAllCoalitions(data.coalitions || []);
     } catch (e) {
@@ -33,12 +37,12 @@ export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
 
   useEffect(() => {
     fetchCoalitions();
-  }, []);
+  }, [dataMode]);
 
   const handleInterpret = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/wishes/interpret', {
+      const res = await fetch(`/api/wishes/interpret?mode=${dataMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -62,7 +66,7 @@ export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
     try {
       const category = result?.interpretation?.specEnvelope?.category || 'custom';
       const attributes = result?.interpretation?.specEnvelope?.requiredAttributes || {};
-      const res = await fetch('/api/coalitions', {
+      const res = await fetch(`/api/coalitions?mode=${dataMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -95,6 +99,11 @@ export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
         <div className="flex items-center gap-2 text-[#003087] font-medium text-xs mb-1">
           <Sliders className="w-3.5 h-3.5" />
           <span>Demand aggregation</span>
+          {dataMode === 'live' && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-300">
+              ⚡ Real-Time Mode
+            </span>
+          )}
         </div>
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">Formulate shopping wish</h1>
         <p className="text-slate-500 text-xs sm:text-sm mt-0.5 leading-relaxed">
@@ -227,74 +236,94 @@ export const WishScreen: React.FC<WishScreenProps> = ({ onNavigateToRoom }) => {
 
       {/* Active Coalition Rooms List */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-slate-900 text-base">Active Coalition Rooms ({allCoalitions.length})</h3>
-            <p className="text-xs text-slate-500">Choose an existing room to pool demand or start your own collective group</p>
+            <h3 className="font-semibold text-slate-900 text-base">
+              Active Coalition Rooms ({allCoalitions.length})
+            </h3>
+            <p className="text-xs text-slate-500">
+              {dataMode === 'live' && allCoalitions.length === 0
+                ? 'No live rooms active yet. Spawn the first real room using your criteria.'
+                : 'Choose an existing room to pool demand or start your own collective group'}
+            </p>
           </div>
 
           <button
             onClick={handleCreateNewRoom}
             disabled={creatingRoom}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition-colors duration-150"
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition-colors duration-150 self-start sm:self-auto"
           >
             <PlusCircle className="w-4 h-4" />
             <span>{creatingRoom ? 'Creating room...' : 'Create new room for this wish'}</span>
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allCoalitions.map((c) => (
-            <div
-              key={c.id}
-              className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors duration-150"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                    {c.category}
-                  </span>
-                  <span className="text-emerald-700 font-medium flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{c.timeRemainingHours || 48}h left</span>
-                  </span>
-                </div>
-
-                <h4 className="font-semibold text-slate-900 text-sm line-clamp-1">{c.name}</h4>
-
-                <div className="flex items-baseline justify-between pt-1 text-xs">
-                  <div>
-                    <span className="text-slate-400 line-through text-[11px] tabular-nums block">
-                      ${(c.soloPriceCents / 100).toFixed(2)}
+        {allCoalitions.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 mx-auto">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium text-slate-800 text-sm">No active rooms found in {dataMode === 'live' ? 'Real-Time' : 'Simulated'} mode</p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Click "Create new room for this wish" above to initialize a live reverse auction pool with this product specification.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {allCoalitions.map((c) => (
+              <div
+                key={c.id}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors duration-150"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                      {c.category}
                     </span>
-                    <span className="font-semibold text-slate-900 text-base tabular-nums">
-                      ${(c.currentPriceCents / 100).toFixed(2)}
+                    <span className="text-emerald-700 font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{c.timeRemainingHours || 48}h left</span>
                     </span>
                   </div>
 
-                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
-                    Save {c.savingsPct}%
-                  </span>
+                  <h4 className="font-semibold text-slate-900 text-sm line-clamp-1">{c.name}</h4>
+
+                  <div className="flex items-baseline justify-between pt-1 text-xs">
+                    <div>
+                      <span className="text-slate-400 line-through text-[11px] tabular-nums block">
+                        ${(c.soloPriceCents / 100).toFixed(2)}
+                      </span>
+                      <span className="font-semibold text-slate-900 text-base tabular-nums">
+                        ${(c.currentPriceCents / 100).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium border border-emerald-200">
+                      Save {c.savingsPct}%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <Users className="w-3.5 h-3.5" />
+                    <span><strong>{c.memberCount}</strong> / {c.quorumTarget} buyers</span>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateToRoom(c.id)}
+                    className="px-3 py-1.5 rounded-lg bg-[#003087] hover:bg-[#00256c] text-white font-medium text-xs flex items-center gap-1 shadow-xs transition-colors duration-150"
+                  >
+                    <span>Enter Room</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <Users className="w-3.5 h-3.5" />
-                  <span><strong>{c.memberCount}</strong> / {c.quorumTarget} buyers</span>
-                </div>
-
-                <button
-                  onClick={() => onNavigateToRoom(c.id)}
-                  className="px-3 py-1.5 rounded-lg bg-[#003087] hover:bg-[#00256c] text-white font-medium text-xs flex items-center gap-1 shadow-xs transition-colors duration-150"
-                >
-                  <span>Enter Room</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

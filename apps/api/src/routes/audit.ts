@@ -5,7 +5,10 @@ export function createAuditRouter(store: AppStore) {
   const router = new Hono();
 
   router.get('/audit', (c) => {
-    const list = [...store.auditLog].sort(
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+
+    const list = [...state.auditLog].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 

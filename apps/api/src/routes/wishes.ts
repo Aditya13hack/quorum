@@ -8,6 +8,9 @@ export function createWishRouter(store: AppStore) {
 
   router.post('/interpret', async (c) => {
     try {
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+      const state = store.getState(mode);
+
       const body = await c.req.json() as {
         text: string;
         maxPriceCents?: number;
@@ -26,8 +29,8 @@ export function createWishRouter(store: AppStore) {
         body.deadlineHours || 72,
       );
 
-      // Check for matching coalitions
-      const openCoalitions = Array.from(store.coalitions.values());
+      // Check for matching coalitions in current state
+      const openCoalitions = Array.from(state.coalitions.values());
       const match = await matchSpecToCoalitions(
         store.aiClient,
         interpretation.specEnvelope,
@@ -37,6 +40,7 @@ export function createWishRouter(store: AppStore) {
       return c.json({
         interpretation,
         match,
+        openCoalitionsCount: openCoalitions.length,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Check, X, Lock, ExternalLink, Sparkles } from 'lucide-react';
+import { ShieldCheck, Check, X, Lock, ExternalLink } from 'lucide-react';
 
 interface ApprovalModalProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface ApprovalModalProps {
   soloPriceCents: number;
   savingsCents: number;
   coalitionId: string;
-  isRealPayPalMode: boolean;
+  dataMode: 'simulated' | 'live';
   onApproveSuccess: (authId: string, isReal: boolean) => void;
 }
 
@@ -19,26 +19,28 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   soloPriceCents,
   savingsCents,
   coalitionId,
-  isRealPayPalMode,
+  dataMode,
   onApproveSuccess,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [useRealPayPal, setUseRealPayPal] = useState(isRealPayPalMode);
+  const [useRealPayPal, setUseRealPayPal] = useState(dataMode === 'live');
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [approvalUrl, setApprovalUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const currentEffectiveMode = useRealPayPal ? 'live' : 'simulated';
+
   // Step 1: Start Authorization (Create order)
   const handleStartApproval = async () => {
     setLoading(true);
     try {
-      const orderRes = await fetch('/api/payments/create-order', {
+      const orderRes = await fetch(`/api/payments/create-order?mode=${currentEffectiveMode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coalitionId,
-          userId: `human_shopper_${Math.floor(Math.random() * 1000)}`,
+          userId: `buyer_${Math.floor(Math.random() * 900) + 100}`,
           amountCents: finalPriceCents,
           useRealPayPal,
         }),
@@ -69,12 +71,12 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
   const completeAuthorization = async (orderId: string, isReal: boolean) => {
     setLoading(true);
     try {
-      const authRes = await fetch('/api/payments/authorize-order', {
+      const authRes = await fetch(`/api/payments/authorize-order?mode=${isReal ? 'live' : 'simulated'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coalitionId,
-          userId: `human_shopper_${Math.floor(Math.random() * 1000)}`,
+          userId: `buyer_${Math.floor(Math.random() * 900) + 100}`,
           orderId,
           amountCents: finalPriceCents,
           useRealPayPal: isReal,
@@ -112,29 +114,29 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Approve best and final offer</h3>
-            <p className="text-xs text-slate-500">Autonomous agents pooled volume demand to unlock this tier</p>
+            <h3 className="text-base font-semibold text-slate-900">Authorize Purchase Guarantee</h3>
+            <p className="text-xs text-slate-500">Autonomous pooling reserve held securely until quorum execution</p>
           </div>
         </div>
 
         {/* Mode Toggle Switch (Simulated vs Real PayPal Sandbox) */}
-        <div className="bg-slate-100 p-1 rounded-xl flex items-center mb-5 text-xs font-medium">
+        <div className="bg-slate-100 p-1 rounded-xl flex items-center mb-5 text-xs font-medium border border-slate-200">
           <button
             onClick={() => { setUseRealPayPal(true); setPendingOrderId(null); }}
             className={`flex-1 py-1.5 rounded-lg transition-colors duration-150 flex items-center justify-center gap-1.5 ${
-              useRealPayPal ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              useRealPayPal ? 'bg-[#003087] text-white shadow-xs font-semibold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Real PayPal Sandbox</span>
           </button>
           <button
             onClick={() => { setUseRealPayPal(false); setPendingOrderId(null); }}
             className={`flex-1 py-1.5 rounded-lg transition-colors duration-150 flex items-center justify-center gap-1.5 ${
-              !useRealPayPal ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+              !useRealPayPal ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-semibold' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span>Simulated instant test</span>
+            <span>Simulated Instant Test</span>
           </button>
         </div>
 
@@ -157,7 +159,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
           <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
             <span className="text-slate-500">Volume discount:</span>
             <span className="font-medium text-emerald-700 tabular-nums">
-              -${(savingsCents / 100).toFixed(2)} ({Math.round((savingsCents / soloPriceCents) * 100)}% off)
+              -${(savingsCents / 100).toFixed(2)} ({soloPriceCents > 0 ? Math.round((savingsCents / soloPriceCents) * 100) : 0}% off)
             </span>
           </div>
         </div>
@@ -172,15 +174,15 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
                 <p className="text-slate-600 mt-0.5 leading-relaxed">
                   Log in using your Sandbox test buyer account:
                 </p>
-                <div className="mt-1.5 bg-white p-2 rounded border border-blue-200/80 font-mono text-[11px] space-y-0.5 text-slate-800">
-                  <div>Email: <strong>sb-anis353857682@personal.example.com</strong></div>
-                  <div>Password: <strong>{"Je<}|8an"}</strong></div>
+                <div className="mt-1.5 bg-white p-2.5 rounded-lg border border-blue-200/80 font-mono text-[11px] space-y-1 text-slate-800">
+                  <div>Email: <strong className="select-all">sb-anis353857682@personal.example.com</strong></div>
+                  <div>Password: <strong className="select-all">{"Je<}|8an"}</strong></div>
                 </div>
               </div>
             </div>
 
             <p className="text-[11px] text-slate-500">
-              Once you confirm in PayPal, click the button below to lock the authorization in escrow:
+              Once approved in PayPal, click the button below to lock your authorization hold in the coalition:
             </p>
 
             <button

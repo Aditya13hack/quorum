@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import type { AppStore } from '../store.js';
 import { MemberState, CoalitionState, LedgerEntryType } from '@quorum/shared/src/enums.js';
-import { createCapturePlan, handleFailedCapture } from '@quorum/engine/src/settlement.js';
-import { checkPriceLimit, checkValidAuthorization, checkCapturePlan } from '@quorum/guard/src/guard.js';
+import { createCapturePlan } from '@quorum/engine/src/settlement.js';
+import { checkPriceLimit } from '@quorum/guard/src/guard.js';
 
 export function createPaymentRouter(store: AppStore) {
   const router = new Hono();
@@ -17,7 +17,10 @@ export function createPaymentRouter(store: AppStore) {
         useRealPayPal?: boolean;
       };
 
-      const coalition = store.coalitions.get(body.coalitionId);
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || (body.useRealPayPal ? 'live' : 'simulated');
+      const state = store.getState(mode);
+
+      const coalition = state.coalitions.get(body.coalitionId);
       if (!coalition) return c.json({ error: 'Coalition not found' }, 404);
 
       // Guard G1 check: amount within limit
@@ -59,6 +62,9 @@ export function createPaymentRouter(store: AppStore) {
         useRealPayPal?: boolean;
       };
 
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || (body.useRealPayPal ? 'live' : 'simulated');
+      const state = store.getState(mode);
+
       const provider = body.useRealPayPal && store.paypalProvider
         ? store.paypalProvider
         : store.simulatedProvider;
@@ -67,13 +73,31 @@ export function createPaymentRouter(store: AppStore) {
       const authResult = await provider.authorizeOrder(body.orderId, idempotencyKey);
 
       // Update membership in store
-      const members = store.memberships.get(body.coalitionId) || [];
-      const member = members.find((m) => m.userId === body.userId);
-      if (member) {
+      const members = state.memberships.get(body.coalitionId) || [];
+      let member = members.find((m) => m.userId === body.userId);
+      if (!member) {
+        // If not joined yet, add as approved member
+        member = {
+          coalitionId: body.coalitionId,
+          userId: body.userId,
+          isSimulated: authResult.provider !== 'paypal',
+          state: MemberState.APPROVED,
+          approvedMaxCents: body.amountCents,
+          authorizationId: authResult.provider === 'paypal' ? authResult.authorizationId : undefined,
+          simAuthId: authResult.provider !== 'paypal' ? authResult.authorizationId : undefined,
+          timestamps: {
+            joinedAt: new Date().toISOString(),
+            approvedAt: new Date().toISOString(),
+          },
+        };
+        members.push(member);
+        state.memberships.set(body.coalitionId, members);
+      } else {
         member.state = MemberState.APPROVED;
         member.approvedMaxCents = body.amountCents;
         if (authResult.provider === 'paypal') {
           member.authorizationId = authResult.authorizationId;
+          member.isSimulated = false;
         } else {
           member.simAuthId = authResult.authorizationId;
         }
@@ -91,9 +115,9 @@ export function createPaymentRouter(store: AppStore) {
         referenceId: authResult.authorizationId,
         createdAt: new Date().toISOString(),
       };
-      store.ledger.push(ledgerEntry);
+      state.ledger.push(ledgerEntry);
 
-      store.auditLog.push({
+      state.auditLog.push({
         id: `audit_auth_${Date.now()}`,
         timestamp: new Date().toISOString(),
         actor: body.userId,
@@ -126,11 +150,14 @@ export function createPaymentRouter(store: AppStore) {
         coalitionId: string;
       };
 
-      const coalition = store.coalitions.get(body.coalitionId);
+      const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+      const state = store.getState(mode);
+
+      const coalition = state.coalitions.get(body.coalitionId);
       if (!coalition) return c.json({ error: 'Coalition not found' }, 404);
 
-      const members = store.memberships.get(body.coalitionId) || [];
-      const offers = store.sellerOffers.get(body.coalitionId) || [];
+      const members = state.memberships.get(body.coalitionId) || [];
+      const offers = state.sellerOffers.get(body.coalitionId) || [];
       const winningOffer = offers[0];
       if (!winningOffer) return c.json({ error: 'No active seller offers' }, 400);
 
@@ -179,7 +206,7 @@ export function createPaymentRouter(store: AppStore) {
             amountCents: capResult.amountCents,
           });
 
-          store.ledger.push({
+          state.ledger.push({
             id: `led_cap_${Date.now()}_${instruction.memberId}`,
             coalitionId: body.coalitionId,
             memberId: instruction.memberId,
@@ -205,10 +232,10 @@ export function createPaymentRouter(store: AppStore) {
         `payout_stage1_${coalition.id}`,
       );
 
-      store.ledger.push({
+      state.ledger.push({
         id: `led_payout1_${Date.now()}`,
         coalitionId: body.coalitionId,
-        memberId: 'seller_alpha',
+        memberId: winningOffer.sellerId || 'seller_alpha',
         type: LedgerEntryType.PAYOUT_SENT,
         amountCents: stage1Payout,
         provider: 'SIMULATED',

@@ -1,18 +1,18 @@
 import React from 'react';
-import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ShieldCheck, ShoppingCart, Activity, FileSpreadsheet, PlayCircle, Code2 } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
   setTab: (tab: string) => void;
-  isRealPayPalMode: boolean;
-  setIsRealPayPalMode: (val: boolean) => void;
+  dataMode: 'simulated' | 'live';
+  setDataMode: (mode: 'simulated' | 'live') => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   setTab,
-  isRealPayPalMode,
-  setIsRealPayPalMode,
+  dataMode,
+  setDataMode,
 }) => {
   const tabs = [
     { id: 'room', label: 'Coalition room', icon: Activity },
@@ -59,20 +59,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           })}
         </nav>
 
-        {/* Real vs Simulated Toggle */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsRealPayPalMode(!isRealPayPalMode)}
-            className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors duration-150 ${
-              isRealPayPalMode
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-slate-100 border-slate-200 text-slate-700'
-            }`}
-            title="Click to toggle between real PayPal Sandbox and simulated testing"
-          >
-            <span className={`w-2 h-2 rounded-full ${isRealPayPalMode ? 'bg-emerald-600' : 'bg-slate-400'}`}></span>
-            <span>{isRealPayPalMode ? 'PayPal Sandbox' : 'Simulated Test'}</span>
-          </button>
+        {/* Real-Time vs Simulated Mode Toggle Button */}
+        <div className="flex items-center">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setDataMode('simulated')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-150 ${
+                dataMode === 'simulated'
+                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-semibold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Switch to Simulated Demo with pre-seeded data for presentation"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>Simulated Demo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDataMode('live')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all duration-150 ${
+                dataMode === 'live'
+                  ? 'bg-[#003087] text-white shadow-xs font-semibold'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+              title="Switch to Real-Time mode (starts 100% blank, real PayPal sandbox only)"
+            >
+              <span className={`w-2 h-2 rounded-full ${dataMode === 'live' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>Real-Time (Blank)</span>
+            </button>
+          </div>
         </div>
       </div>
 

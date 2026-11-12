@@ -6,10 +6,13 @@ export function createLedgerRouter(store: AppStore) {
   const router = new Hono();
 
   router.get('/ledger', (c) => {
+    const mode = c.req.query('mode') || c.req.header('x-quorum-mode') || 'simulated';
+    const state = store.getState(mode);
+
     const coalitionId = c.req.query('coalitionId');
     const type = c.req.query('type');
 
-    let entries = [...store.ledger];
+    let entries = [...state.ledger];
     if (coalitionId) {
       entries = entries.filter((e) => e.coalitionId === coalitionId);
     }

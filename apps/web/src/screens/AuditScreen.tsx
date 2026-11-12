@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, AlertOctagon } from 'lucide-react';
+import { ShieldCheck, AlertOctagon, CheckCircle2 } from 'lucide-react';
 
-export const AuditScreen: React.FC = () => {
+interface AuditScreenProps {
+  dataMode?: 'simulated' | 'live';
+}
+
+export const AuditScreen: React.FC<AuditScreenProps> = ({ dataMode = 'simulated' }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAudit = async () => {
     try {
-      const res = await fetch('/api/audit');
+      const res = await fetch(`/api/audit?mode=${dataMode}`);
       const json = await res.json();
       setData(json);
     } catch (e) {
@@ -19,7 +23,7 @@ export const AuditScreen: React.FC = () => {
 
   useEffect(() => {
     fetchAudit();
-  }, []);
+  }, [dataMode]);
 
   if (loading || !data) {
     return (
@@ -32,7 +36,7 @@ export const AuditScreen: React.FC = () => {
     );
   }
 
-  const { logs, blockedAttacks } = data;
+  const { logs = [], blockedAttacks = [] } = data;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -41,6 +45,11 @@ export const AuditScreen: React.FC = () => {
         <div className="flex items-center gap-2 text-[#003087] font-medium text-xs mb-1">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Safety invariant</span>
+          {dataMode === 'live' && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold border border-emerald-300">
+              ⚡ Real-Time Mode
+            </span>
+          )}
         </div>
         <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
           Audit trail and adversarial defenses
@@ -66,7 +75,9 @@ export const AuditScreen: React.FC = () => {
 
         {blockedAttacks.length === 0 ? (
           <div className="text-xs text-slate-600 bg-white p-4 rounded-xl border border-rose-200/60">
-            No attacks detected in the current session. Run <strong>Step 3</strong> in the Walkthrough tab to test live defense against Seller Gamma.
+            {dataMode === 'live'
+              ? 'No adversarial attacks detected in the live session. In Real-Time mode, if any seller attempts price inflation, ghost-inventory, or cross-side collusion, the Guard rejects it here.'
+              : 'No attacks detected in the current session. Run Step 3 in the Walkthrough tab to test live defense against Seller Gamma.'}
           </div>
         ) : (
           <div className="space-y-3">
@@ -106,42 +117,48 @@ export const AuditScreen: React.FC = () => {
           </span>
         </div>
 
-        <div className="divide-y divide-slate-100 text-xs">
-          {logs.map((log: any) => {
-            const isBlocked = log.verdict === 'blocked';
-            return (
-              <div
-                key={log.id}
-                className="p-4 sm:px-6 hover:bg-slate-50/70 transition-colors duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] font-medium text-slate-900">{log.eventType}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                      {log.actor} ({log.actorType})
+        {logs.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-xs">
+            0 live audit logs recorded. Actions taken in Real-Time mode will be appended here in real time.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 text-xs">
+            {logs.map((log: any) => {
+              const isBlocked = log.verdict === 'blocked';
+              return (
+                <div
+                  key={log.id}
+                  className="p-4 sm:px-6 hover:bg-slate-50/70 transition-colors duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] font-medium text-slate-900">{log.eventType}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                        {log.actor} ({log.actorType})
+                      </span>
+                    </div>
+                    <p className="text-slate-600 text-xs leading-relaxed">{log.summary}</p>
+                  </div>
+
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between text-slate-400 text-[11px] shrink-0 gap-1">
+                    <span
+                      className={`font-medium px-2 py-0.5 rounded text-[10px] ${
+                        isBlocked
+                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}
+                    >
+                      {isBlocked ? 'Blocked' : 'Verified'}
+                    </span>
+                    <span className="font-mono tabular-nums text-slate-400 text-[10px]">
+                      {new Date(log.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="text-slate-600 text-xs leading-relaxed">{log.summary}</p>
                 </div>
-
-                <div className="flex sm:flex-col items-center sm:items-end justify-between text-slate-400 text-[11px] shrink-0 gap-1">
-                  <span
-                    className={`font-medium px-2 py-0.5 rounded text-[10px] ${
-                      isBlocked
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    }`}
-                  >
-                    {isBlocked ? 'Blocked' : 'Verified'}
-                  </span>
-                  <span className="font-mono tabular-nums text-slate-400 text-[10px]">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
