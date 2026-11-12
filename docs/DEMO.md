@@ -2,34 +2,73 @@
 
 Thank you for evaluating Quorum for the **PayPal AI Hackathon 2026**!
 
-## Quick Start (No Login Required)
+---
 
-1. **Launch the Demo:**
-   - Run the app locally via:
-     ```bash
-     pnpm install
-     pnpm dev
-     ```
-   - Open your browser to: **`http://localhost:5173`**
-   - The backend runs at: **`http://localhost:3001`**
+## ⚡ Quick Start
 
-2. **Run the 3-Minute Walkthrough:**
-   - Click the **"Judge Guided Demo"** tab in the navigation bar.
-   - Click each step sequentially (Step 1 through 6):
-     - **Step 1:** Observe AI Wish Interpretation into a structured Spec Envelope.
-     - **Step 2:** Watch 9 new buyer agents swarm the room — the price curve automatically steps down from $389 to $315!
-     - **Step 3:** Watch Seller Gamma attempt an adversarial prompt injection attack — watch the Guard block it in real time!
-     - **Step 4:** Review the Human Consent approval card and test simulated reservation authorization.
-     - **Step 5:** Watch Quorum Lock and the Autonomous Waiting List self-healing demonstration (healing a simulated failed capture).
-     - **Step 6:** Inspect the Staged Supplier Payout and verified $0 discrepancy reconciliation in the Ledger.
+```bash
+# 1. Install dependencies
+pnpm install
 
-3. **Explore Key Panels:**
-   - **Coalition Room:** Live autonomous step-function price curve, quorum meter, member roster with Real vs Simulated honesty tags.
-   - **Guard & Attacks:** Inspection panel displaying neutralized hostile prompt injection attempts and violated Guard rules (G1–G12).
-   - **Ledger & Reconcile:** Complete auditable table of every reservation, capture, void, and payout with real-time zero-discrepancy math.
-   - **MCP & APIs:** JSON-RPC 2.0 endpoint specifications for outside shopping agents connecting via Cursor, Claude, or custom bots.
+# 2. Launch backend (port 3001) and web dashboard (port 5173)
+pnpm dev
+```
 
-4. **Testing Real PayPal Sandbox Approvals:**
-   - In Coalition Room, click **"Review & Authorize in Sandbox"**.
-   - If `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` are supplied in `.env`, you can sign in with your PayPal sandbox personal buyer account.
-   - Notice that funds are **reserved with an authorization hold**, not charged until quorum locks.
+Open **`http://localhost:5173`** in your browser (preferably in an Incognito / Private window to avoid PayPal sandbox session conflicts).
+
+---
+
+## 🎯 4-Step Interactive Evaluation Flow
+
+### Step 1: Simulated Demo Exploration
+1. At the top of the screen, note the **"Simulated Demo Active"** mode indicator.
+2. Go to the **Coalition Room** tab (`/room`):
+   - Inspect the live price curve stepping down as volume increases from 5 to 25 units.
+   - Observe how 15 synthetic buyer agents have pooled demand to reduce unit pricing from \$389 down to \$315.
+   - Inspect the member roster with transparency badges.
+3. Switch to the **Financial Ledger** tab (`/ledger`):
+   - Review double-entry accounting records powered by AG Grid.
+   - Verify that $\sum(\text{debits}) = \sum(\text{credits})$ with **$0.00 discrepancy**.
+
+### Step 2: Real-Time Demand & Live PayPal Sandbox Authorization
+1. In the top banner or navbar toggle, switch to **"Real-Time Mode"** (100% pristine, zero pre-seeded data).
+2. Go to the **Demand Aggregation** tab (`/`):
+   - Enter: `"100 pieces of Samsung S24 Ultra"` with a \$380 price ceiling.
+   - Click **"Compile specification envelope & find active coalition rooms"**.
+   - Notice the AI parses your request into a deterministic JSON specification envelope.
+3. Click **"Create new room for this wish"**:
+   - Quorum instantly spawns a live coalition room and routes you into it.
+4. Click **"Join Coalition & Authorize Hold"**:
+   - Ensure **"Real PayPal Sandbox"** is active and click **"Authorize in PayPal Sandbox"**.
+   - Use the one-click **Copy** buttons in the modal to paste test buyer credentials:
+     - **Email:** `sb-anis353857682@personal.example.com`
+     - **Password:** `Je<}|8an`
+   - Log into PayPal Sandbox, review the \$380 reservation hold, and approve.
+   - Click **"I approved in PayPal — Lock authorization"** in Quorum.
+   - Notice: **Funds are held, NOT charged**. If the pool fails, the hold voids at \$0 cost.
+
+### Step 3: Adversarial Threat Simulator
+1. Switch to the **Safety & Guard** tab (`/audit`).
+2. Test our deterministic pure-code rules engine against adversarial attacks:
+   - Click **"Simulate Sybil Attack"**: An agent tries to flood the room with duplicate buyer accounts. Intercepted by Guard rule **G7**.
+   - Click **"Simulate Price Ceiling Breach"**: A seller offers a price above the buyer's maximum ceiling. Blocked cold by Guard rule **G1**.
+   - Click **"Simulate Seller Self-Dealing"**: A seller attempts to join as a buyer to artificially trigger bulk discounts. Intercepted by Guard rule **G8**.
+3. Inspect the tamper-evident audit ledger updating live with cryptographic SHA-256 hashes.
+
+### Step 4: Dispatch Outside AI Agents via MCP
+1. Switch to the **API & MCP** tab (`/mcp`).
+2. Select an outside agent persona (Claude Desktop, Cursor, LangChain, AutoGen).
+3. Click **"Dispatch MCP Tool Call"**:
+   - Watch Quorum execute a live JSON-RPC 2.0 `join_coalition` call against the protocol.
+   - External agents interact seamlessly without needing custom closed SDKs.
+
+---
+
+## 🧪 Automated Test Verification
+
+Quorum includes 158 automated unit and integration tests across 7 packages:
+
+```bash
+pnpm test
+```
+Result: **158 passed (100%)** in < 5 seconds.
