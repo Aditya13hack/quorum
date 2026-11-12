@@ -165,10 +165,10 @@ export const PriceCurve: React.FC<PriceCurveProps> = ({
             y={padding.top - 8}
             fill="#B45309"
             fontSize="10"
-            fontWeight="bold"
+            fontWeight="500"
             textAnchor="middle"
           >
-            QUORUM THRESHOLD ({quorumTarget})
+            Quorum threshold ({quorumTarget})
           </text>
 
           {/* Fill under step curve */}
@@ -203,9 +203,9 @@ export const PriceCurve: React.FC<PriceCurveProps> = ({
       </div>
 
       <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100 mt-2">
-        <span>X: Number of aggregated consumer AI agents</span>
-        <span className="text-[#003087] font-semibold">
-          Current State: {currentMembers} Members @ ${(currentPriceCents / 100).toFixed(2)}/unit
+        <span>X axis: Pooled buyer agents</span>
+        <span className="text-[#003087] font-medium tabular-nums">
+          Current: {currentMembers} buyers committed at ${(currentPriceCents / 100).toFixed(2)}/unit
         </span>
       </div>
     </div>
